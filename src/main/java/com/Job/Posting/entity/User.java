@@ -1,0 +1,64 @@
+package com.Job.Posting.entity;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+@Entity
+@Getter
+@Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@AllArgsConstructor
+@NoArgsConstructor
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, length = 10, unique = true)
+    private String number;
+
+    @Column(nullable = false, length = 100)
+    private String location;
+
+    @Column(nullable = false)
+    private Integer experience;
+
+    private String profile_photo;
+
+    private Double latitude;
+    private Double longitude;
+
+    //FireBase token
+    private String fcmToken;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime created_at;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "createdBy",cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Job> job=new ArrayList<>();
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private Set<JobApplication> jobApplications=new HashSet<>();
+
+    @ManyToMany
+    @JoinTable(name = "user_skills",joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "skill_id"))
+    private Set<Skills> skills=new HashSet<>();
+
+}

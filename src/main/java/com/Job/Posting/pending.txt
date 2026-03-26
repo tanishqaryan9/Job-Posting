@@ -1,0 +1,27 @@
+entity/
+├── Auth.java
+└── type/Role.java
+
+dto/auth/
+├── RegisterRequestDto.java
+├── LoginRequestDto.java
+└── AuthResponseDto.java
+
+auth/
+├── controller/AuthController.java
+├── service/AuthService.java
+├── service/impl/AuthServiceImpl.java
+└── repository/AuthRepository.java
+
+config/
+└── SecurityConfig.java  ← after JWT
+
+1. JWT Security          ← most critical
+2. API Versioning        ← 10 mins, very professional
+3. Application Limit     ← prevents duplicate applications
+4. Job Search & Filter   ← very useful feature
+5. Soft Delete           ← good practice
+6. Audit Fields          ← good practice
+7. Job Expiry            ← realistic feature
+8. Profile Completion    ← nice for frontend
+9. Rate Limiting         ← after deployment
