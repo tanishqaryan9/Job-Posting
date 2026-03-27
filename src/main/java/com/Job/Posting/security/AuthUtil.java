@@ -96,7 +96,7 @@ public class AuthUtil {
         return providerId;
     }
 
-    public String determineUsernameFromOAuth2User(OAuth2User user, String registrationid, String providerId)
+    public String determineUsernameFromOAuth2User(OAuth2User user, String registrationId, String providerId)
     {
         String email = user.getAttribute("email");
         if(email!=null && !email.isBlank())
@@ -104,7 +104,7 @@ public class AuthUtil {
             return email;
         }
 
-        return switch (registrationid.toLowerCase())
+        return switch (registrationId.toLowerCase())
         {
             case "google"-> user.getAttribute("sub");
             case "github"-> user.getAttribute("login");

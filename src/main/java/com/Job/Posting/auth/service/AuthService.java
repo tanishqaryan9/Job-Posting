@@ -12,6 +12,7 @@ import com.Job.Posting.entity.type.AuthProviderType;
 import com.Job.Posting.refresh.repository.RefreshTokenRepository;
 import com.Job.Posting.refresh.service.RefreshTokenService;
 import com.Job.Posting.security.AuthUtil;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
@@ -56,14 +57,20 @@ public class AuthService {
         return new LoginResponseDto(newRefreshToken.getAppUser().getId(), newAccessToken, newRefreshToken.getToken());
     }
 
-    private AppUser signUpInternal(SignupRequestDto signupRequestDto)
+    private AppUser signUpInternal(SignupRequestDto signupRequestDto, AuthProviderType authProviderType, String providerId)
     {
         AppUser user= appUserRepository.findByUsername(signupRequestDto.getUsername());
         if(user!=null)
         {
             throw new IllegalArgumentException("User already exists");
         }
-        return appUserRepository.save(AppUser.builder().username(signupRequestDto.getUsername()).password(passwordEncoder.encode(signupRequestDto.getPassword())).build());
+        return appUserRepository
+                .save(AppUser.builder()
+                        .username(signupRequestDto
+                        .getUsername()).password(passwordEncoder.encode(signupRequestDto.getPassword()!=null?signupRequestDto.getPassword():null))
+                        .providerId(providerId)
+                        .providerType(authProviderType)
+                        .build());
     }
 
     public void logout(RefreshRequestDto refreshRequestDto) {
@@ -74,10 +81,11 @@ public class AuthService {
 
     public SignupResponseDto signup(SignupRequestDto signupRequestDto) {
 
-        AppUser appUser = signUpInternal(signupRequestDto);
+        AppUser appUser = signUpInternal(signupRequestDto,AuthProviderType.EMAIL,null);
         return modelMapper.map(appUser,SignupResponseDto.class);
     }
 
+    @Transactional
     public ResponseEntity<LoginResponseDto> handleOAuh2LoginRequests(OAuth2User user, String registrationID) {
         //fetch providerType and providerID
         //save providerType and providerID in DB sp user cannot log in with both Google and then GitHub
@@ -91,23 +99,15 @@ public class AuthService {
         String email = user.getAttribute("email");
         AppUser emailUser = appUserRepository.findByUsername(email);
 
-        if(emailUser==null && user1==null)
+        if (user1 != null)
         {
-            String username = authUtil.determineUsernameFromOAuth2User(user,registrationID,providerId);
-            //If provider is Google then there is no need to store password
-            user1 = signUpInternal(new SignupRequestDto(username,null));
-        }
-        else if(emailUser!=null)
-        {
-            if(email!=null && !email.isBlank() && !email.equals(user1.getUsername()))
-            {
-                user1.setUsername(email);
-                appUserRepository.save(user1);
-            }
-        }
-        else
-        {
-            throw new BadCredentialsException("This email is already registered with provider "+ emailUser.getProviderType());
+            user1.setUsername(email);
+            appUserRepository.save(user1);
+        } else if (emailUser != null) {
+            throw new BadCredentialsException("Email already registered with " + emailUser.getProviderType());
+        } else {
+            String username = authUtil.determineUsernameFromOAuth2User(user, registrationID, providerId);
+            user1 = signUpInternal(new SignupRequestDto(username, null),providerType,providerId);
         }
 
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user1);
