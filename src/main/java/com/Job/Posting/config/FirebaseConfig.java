@@ -4,6 +4,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 
 import jakarta.annotation.PostConstruct;
@@ -12,11 +13,12 @@ import java.io.InputStream;
 
 @Slf4j
 @Configuration
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true", matchIfMissing = false)
 public class FirebaseConfig {
 
     @PostConstruct
     public void initialize() {
-        // Skip if already initialized (e.g. hot reload)
+        //skip if already initialized (eg: hot reload)
         if (!FirebaseApp.getApps().isEmpty()) {
             log.info("Firebase already initialized, skipping.");
             return;
