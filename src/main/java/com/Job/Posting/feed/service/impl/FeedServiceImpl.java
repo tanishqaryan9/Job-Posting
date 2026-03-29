@@ -46,7 +46,7 @@ public class FeedServiceImpl implements FeedService {
         {
             double distance=haversineUtil.calculateDistance(
                     user.getLatitude(),user.getLongitude(),
-                    job.getLongitude(),job.getLongitude()
+                    job.getLatitude(),job.getLongitude()
             );
             JobDto dto=modelMapper.map(job,JobDto.class);
             dto.setDistanceKm(haversineUtil.roundDistance(distance));

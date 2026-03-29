@@ -28,12 +28,20 @@ pipeline {
                 '''
                 bat '''
                     :waitpg
-                    docker exec postgres_test pg_isready >nul 2>&1 || (timeout /t 2 >nul & goto waitpg)
+                    docker exec postgres_test pg_isready >nul 2>&1
+                    if errorlevel 1 (
+                        ping -n 3 127.0.0.1 >nul
+                        goto waitpg
+                    )
                     echo Postgres is ready
                 '''
                 bat '''
                     :waitredis
-                    docker exec redis_test redis-cli ping | findstr PONG >nul 2>&1 || (timeout /t 2 >nul & goto waitredis)
+                    docker exec redis_test redis-cli ping 2>nul | findstr /C:"PONG" >nul
+                    if errorlevel 1 (
+                        ping -n 3 127.0.0.1 >nul
+                        goto waitredis
+                    )
                     echo Redis is ready
                 '''
             }
@@ -51,7 +59,7 @@ pipeline {
         }
         stage('Build JAR') {
             steps {
-                bat 'mvn package -DskipTests --no-transfer-progress'
+                bat 'mvn package -DskipTests --no-transfer-progress -Dmaven.repo.local=C:\\ProgramData\\Jenkins\\.m2\\repository'
             }
             post {
                 success {
