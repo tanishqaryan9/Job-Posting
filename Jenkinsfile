@@ -2,43 +2,42 @@ pipeline {
     agent any
 
     tools {
-        jdk 'JDK21'
+        jdk 'JDK25'     // MUST match Global Tool name
         maven 'Maven'
     }
 
     environment {
-        // ---- FIX JAVA_HOME FOR WINDOWS AGENT ----
-        JAVA_HOME = tool('JDK21')
-        PATH = "${JAVA_HOME}\\bin;${env.PATH}"
-
-        // ---- APP ENV ----
         DB_URL      = 'jdbc:postgresql://localhost:5432/jobposting_test'
         DB_USERNAME = 'postgres'
         DB_PASSWORD = 'postgres'
+
         JWT_SECRET  = 'ci-test-secret-key-long-enough-for-hmac-256-signing'
+
         REDIS_HOST  = 'localhost'
         REDIS_PORT  = '6379'
+
         DDL_AUTO    = 'create-drop'
+
         MAVEN_REPO  = 'C:\\ProgramData\\Jenkins\\.m2\\repository'
     }
 
     stages {
 
-        // ===============================
-        // CHECKOUT
-        // ===============================
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        // ===============================
-        // START DOCKER SERVICES
-        // ===============================
+        stage('Verify Java & Maven') {
+            steps {
+                bat 'java -version'
+                bat 'mvn -version'
+            }
+        }
+
         stage('Start Services') {
             steps {
-
                 bat '''
                 echo Cleaning old containers...
                 docker rm -f postgres_test redis_test 2>nul
@@ -55,19 +54,15 @@ pipeline {
                   -p 6379:6379 redis:latest
                 '''
 
-                // ---- WAIT FOR POSTGRES ----
                 bat '''
                 echo Waiting for Postgres...
-
                 set retries=30
 
                 :pgloop
                 docker exec postgres_test pg_isready >nul 2>&1
                 if %errorlevel%==0 goto pgready
-
                 set /a retries-=1
                 if %retries% LEQ 0 exit /b 1
-
                 ping -n 3 127.0.0.1 >nul
                 goto pgloop
 
@@ -75,19 +70,15 @@ pipeline {
                 echo Postgres READY
                 '''
 
-                // ---- WAIT FOR REDIS ----
                 bat '''
                 echo Waiting for Redis...
-
                 set retries=30
 
                 :redisloop
                 docker exec redis_test redis-cli ping | findstr PONG >nul
                 if %errorlevel%==0 goto redisready
-
                 set /a retries-=1
                 if %retries% LEQ 0 exit /b 1
-
                 ping -n 3 127.0.0.1 >nul
                 goto redisloop
 
@@ -97,9 +88,6 @@ pipeline {
             }
         }
 
-        // ===============================
-        // RUN TESTS
-        // ===============================
         stage('Test') {
             steps {
                 bat '''
@@ -118,18 +106,12 @@ pipeline {
 
             post {
                 always {
-                    junit allowEmptyResults: true,
-                          testResults: 'target/surefire-reports/*.xml'
-
-                    archiveArtifacts artifacts: 'target/surefire-reports/**',
-                                     allowEmptyArchive: true
+                    junit 'target/surefire-reports/*.xml'
+                    archiveArtifacts artifacts: 'target/surefire-reports/**', allowEmptyArchive: true
                 }
             }
         }
 
-        // ===============================
-        // BUILD JAR
-        // ===============================
         stage('Build JAR') {
             steps {
                 bat '''
@@ -140,16 +122,12 @@ pipeline {
 
             post {
                 success {
-                    archiveArtifacts artifacts: 'target/*.jar',
-                                     fingerprint: true
+                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
                 }
             }
         }
     }
 
-    // ===============================
-    // CLEANUP
-    // ===============================
     post {
         always {
             bat '''
