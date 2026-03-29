@@ -8,6 +8,7 @@ pipeline {
         REDIS_HOST     = 'localhost'
         REDIS_PORT     = '6379'
         DDL_AUTO       = 'create-drop'
+        MAVEN_REPO     = 'C:\\ProgramData\\Jenkins\\.m2\\repository'
     }
     tools {
         jdk   'JDK21'
@@ -48,7 +49,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                bat 'mvn test --no-transfer-progress -Dspring.datasource.url=%DB_URL% -Dspring.datasource.username=%DB_USERNAME% -Dspring.datasource.password=%DB_PASSWORD% -Djwt.secretKey=%JWT_SECRET% -Dspring.data.redis.host=%REDIS_HOST% -Dspring.data.redis.port=%REDIS_PORT% -Dspring.jpa.hibernate.ddl-auto=%DDL_AUTO%'
+                bat 'mvn test --no-transfer-progress "-Dspring.profiles.active=test" "-Dspring.datasource.url=%DB_URL%" "-Dspring.datasource.username=%DB_USERNAME%" "-Dspring.datasource.password=%DB_PASSWORD%" "-Djwt.secretKey=%JWT_SECRET%" "-Dspring.data.redis.host=%REDIS_HOST%" "-Dspring.data.redis.port=%REDIS_PORT%" "-Dspring.jpa.hibernate.ddl-auto=%DDL_AUTO%" "-Dmaven.repo.local=%MAVEN_REPO%"'
             }
             post {
                 always {
@@ -59,7 +60,7 @@ pipeline {
         }
         stage('Build JAR') {
             steps {
-                bat 'mvn package -DskipTests --no-transfer-progress -Dmaven.repo.local=C:\\ProgramData\\Jenkins\\.m2\\repository'
+                bat 'mvn package -DskipTests --no-transfer-progress "-Dmaven.repo.local=%MAVEN_REPO%"'
             }
             post {
                 success {
