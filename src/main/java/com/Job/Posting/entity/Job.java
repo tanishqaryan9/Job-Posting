@@ -4,6 +4,7 @@ import com.Job.Posting.entity.type.JobType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -13,6 +14,7 @@ import java.util.Set;
 @Getter @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
+@SQLRestriction("deleted_at IS NULL")
 public class Job {
 
     @Id
@@ -20,7 +22,7 @@ public class Job {
     @EqualsAndHashCode.Include
     private Long id;
 
-    @Column(nullable = false,length = 100)
+    @Column(nullable = false, length = 100)
     private String title;
 
     @Column(length = 300)
@@ -40,8 +42,10 @@ public class Job {
     private Double longitude;
 
     @ManyToMany
-    @JoinTable(name = "job_skills",joinColumns = @JoinColumn(name = "job_id"), inverseJoinColumns = @JoinColumn(name = "skill_id"))
-    private Set<Skills> requiredSkills=new HashSet<>();
+    @JoinTable(name = "job_skills",
+            joinColumns = @JoinColumn(name = "job_id"),
+            inverseJoinColumns = @JoinColumn(name = "skill_id"))
+    private Set<Skills> requiredSkills = new HashSet<>();
 
     @ManyToOne
     @JoinColumn(name = "user_id")
@@ -50,4 +54,7 @@ public class Job {
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime created_at;
+
+    // Soft delete column
+    private LocalDateTime deleted_at;
 }

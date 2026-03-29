@@ -16,27 +16,31 @@ public class FirebaseConfig {
 
     @PostConstruct
     public void initialize() {
+        // Skip if already initialized (e.g. hot reload)
+        if (!FirebaseApp.getApps().isEmpty()) {
+            log.info("Firebase already initialized, skipping.");
+            return;
+        }
+
+        InputStream serviceAccount =
+                getClass().getClassLoader().getResourceAsStream("firebase-service-account.json");
+
+        if (serviceAccount == null) {
+            log.warn("firebase-service-account.json not found. " +
+                     "Push notifications will be disabled. " +
+                     "This is expected in dev/test environments.");
+            return; // App continues to start — Firebase is optional
+        }
+
         try {
-            // ✅ load from resources folder
-            InputStream serviceAccount =
-                    getClass().getClassLoader().getResourceAsStream("firebase-service-account.json");
-
-            if (serviceAccount == null) {
-                log.error("firebase-service-account.json not found in resources!");
-                return;
-            }
-
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                     .build();
-
-            if (FirebaseApp.getApps().isEmpty()) {
-                FirebaseApp.initializeApp(options);
-                log.info("Firebase initialized successfully");
-            }
-
+            FirebaseApp.initializeApp(options);
+            log.info("Firebase initialized successfully.");
         } catch (IOException e) {
-            log.error("Failed to initialize Firebase: {}", e.getMessage());
+            log.error("Firebase initialization failed: {}. Push notifications disabled.", e.getMessage());
+            // Do NOT rethrow — app must still start without Firebase
         }
     }
 }

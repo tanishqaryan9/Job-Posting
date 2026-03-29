@@ -23,6 +23,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -37,26 +38,27 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
-    @Cacheable(value = "jobs", key = "'all:' + #page" + ':' + "#size")
+    @Cacheable(value = "jobs", key = "'all:' + #page + ':' + #size")
     public Page<JobDto> getAllJobs(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return jobRepository.findAll(pageable)
-                .map(job -> modelMapper.map(job, JobDto.class));
+        return jobRepository.findAll(pageable).map(job -> modelMapper.map(job, JobDto.class));
     }
 
     @Override
     @Transactional
-    @Cacheable(value = "jobs", key= "#id")
+    @Cacheable(value = "jobs", key = "#id")
     public JobDto getJobById(Long id) {
-        Job job=jobRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Job not found with id: "+id));
-        return modelMapper.map(job,JobDto.class);
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
+        return modelMapper.map(job, JobDto.class);
     }
 
     @Override
     @Transactional
-    @CacheEvict(value = {"jobs","feed"}, allEntries = true)
+    @CacheEvict(value = {"jobs", "feed"}, allEntries = true)
     public JobDto addNewJob(AddJobRequestDto addJobRequestDto) {
-        User user = userRepository.findById(addJobRequestDto.getCreatedByUserId()).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + addJobRequestDto.getCreatedByUserId()));
+        User user = userRepository.findById(addJobRequestDto.getCreatedByUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + addJobRequestDto.getCreatedByUserId()));
 
         Job job = new Job();
         job.setTitle(addJobRequestDto.getTitle());
@@ -78,11 +80,13 @@ public class JobServiceImpl implements JobService {
     @Caching(evict = {
             @CacheEvict(value = "jobs", key = "#id"),
             @CacheEvict(value = "jobs", allEntries = true),
-            @CacheEvict(value = "feed", allEntries = true),
+            @CacheEvict(value = "feed", allEntries = true)
     })
     public JobDto updateJob(AddJobRequestDto addJobRequestDto, Long id) {
-        Job job = jobRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
-        User user = userRepository.findById(addJobRequestDto.getCreatedByUserId()).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + addJobRequestDto.getCreatedByUserId()));
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
+        User user = userRepository.findById(addJobRequestDto.getCreatedByUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + addJobRequestDto.getCreatedByUserId()));
 
         job.setTitle(addJobRequestDto.getTitle());
         job.setDescription(addJobRequestDto.getDescription());
@@ -94,7 +98,7 @@ public class JobServiceImpl implements JobService {
         job.setLongitude(addJobRequestDto.getLongitude());
         job.setCreatedBy(user);
 
-        Job newJob=jobRepository.save(job);
+        Job newJob = jobRepository.save(job);
         return modelMapper.map(newJob, JobDto.class);
     }
 
@@ -103,35 +107,25 @@ public class JobServiceImpl implements JobService {
     @Caching(evict = {
             @CacheEvict(value = "jobs", key = "#id"),
             @CacheEvict(value = "jobs", allEntries = true),
-            @CacheEvict(value = "feed", allEntries = true),
+            @CacheEvict(value = "feed", allEntries = true)
     })
     public JobDto updateJobValue(Map<String, Object> updates, Long id) {
-        Job job=jobRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Job not found with id: "+id));
-        updates.forEach((key,value)->
-        {
-            switch (key)
-            {
-                case "title": job.setTitle((String)value);
-                    break;
-                case "description": job.setDescription((String)value);
-                    break;
-                case "salary": job.setSalary(((Number)value).doubleValue());
-                    break;
-                case "location": job.setLocation((String)value);
-                    break;
-                case "job_type": job.setJob_type(JobType.valueOf((String)value));
-                    break;
-                case "experience_required": job.setExperience_required(((Number) value).intValue());
-                    break;
-                case "latitude": job.setLatitude(((Number)value).doubleValue());
-                    break;
-                case "longitude": job.setLongitude(((Number)value).doubleValue());
-                    break;
-                default:
-                    throw new ResourceNotFoundException("Invalid Field!");
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
+        updates.forEach((key, value) -> {
+            switch (key) {
+                case "title"               -> job.setTitle((String) value);
+                case "description"         -> job.setDescription((String) value);
+                case "salary"              -> job.setSalary(((Number) value).doubleValue());
+                case "location"            -> job.setLocation((String) value);
+                case "job_type"            -> job.setJob_type(JobType.valueOf((String) value));
+                case "experience_required" -> job.setExperience_required(((Number) value).intValue());
+                case "latitude"            -> job.setLatitude(((Number) value).doubleValue());
+                case "longitude"           -> job.setLongitude(((Number) value).doubleValue());
+                default -> throw new ResourceNotFoundException("Invalid field: " + key);
             }
         });
-        return modelMapper.map(job,JobDto.class);
+        return modelMapper.map(job, JobDto.class);
     }
 
     @Override
@@ -139,45 +133,52 @@ public class JobServiceImpl implements JobService {
     @Caching(evict = {
             @CacheEvict(value = "jobs", key = "#id"),
             @CacheEvict(value = "jobs", allEntries = true),
-            @CacheEvict(value = "feed", allEntries = true),
+            @CacheEvict(value = "feed", allEntries = true)
     })
     public void deleteJob(Long id) {
-        if(!jobRepository.existsById(id))
-        {
-            throw new ResourceNotFoundException("Job not found with id: "+id);
-        }
-        jobRepository.deleteById(id);
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
+        // Soft delete — set deleted_at, keep data in DB
+        job.setDeleted_at(LocalDateTime.now());
+        jobRepository.save(job);
     }
 
     @Override
     @Transactional
-    public List<SkillsDto> getJobSkills(Long id){
-        Job job=jobRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Job not found with id: "+id));
-        return job.getRequiredSkills().stream().map(element -> modelMapper.map(element, SkillsDto.class)).toList();
+    public List<SkillsDto> getJobSkills(Long id) {
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
+        return job.getRequiredSkills().stream()
+                .map(element -> modelMapper.map(element, SkillsDto.class))
+                .toList();
     }
 
     @Override
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "jobs", key = "#jobId"),
-            @CacheEvict(value = "feed", allEntries = true),
+            @CacheEvict(value = "feed", allEntries = true)
     })
     public JobDto addSkillsToJob(Long jobId, Long skillId) {
-        Job job=jobRepository.findById(jobId).orElseThrow(()-> new ResourceNotFoundException("Job not found with id: "+jobId));
-        Skills skills = skillRepository.findById(skillId).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + skillId));
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
+        Skills skills = skillRepository.findById(skillId)
+                .orElseThrow(() -> new ResourceNotFoundException("Skill not found with id: " + skillId));
         job.getRequiredSkills().add(skills);
-        return modelMapper.map(job,JobDto.class);
+        return modelMapper.map(job, JobDto.class);
     }
 
     @Override
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "jobs", key = "#jobId"),
-            @CacheEvict(value = "feed", allEntries = true),
+            @CacheEvict(value = "feed", allEntries = true)
     })
     public void removeSkillFromJob(Long jobId, Long skillId) {
-        Job job=jobRepository.findById(jobId).orElseThrow(()-> new ResourceNotFoundException("Job not found with id: "+jobId));
-        Skills skills = skillRepository.findById(skillId).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + skillId));
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
+        Skills skills = skillRepository.findById(skillId)
+                .orElseThrow(() -> new ResourceNotFoundException("Skill not found with id: " + skillId));
         job.getRequiredSkills().remove(skills);
     }
 }

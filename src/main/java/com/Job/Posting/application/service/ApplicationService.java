@@ -2,14 +2,15 @@ package com.Job.Posting.application.service;
 
 import com.Job.Posting.dto.application.AddApplicationDto;
 import com.Job.Posting.dto.application.ApplicationDto;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Map;
 
 @Service
 public interface ApplicationService {
-    List<ApplicationDto> getAllApplications();
+
+    Page<ApplicationDto> getAllApplications(int page, int size);
 
     ApplicationDto getApplicationByID(Long id);
 

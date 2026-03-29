@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -32,95 +33,95 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public Page<UserDto> getAllUsers(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
+        // @SQLRestriction on entity auto-filters deleted users
         return userRepository.findAll(pageable).map(user -> modelMapper.map(user, UserDto.class));
     }
 
     @Override
     @Transactional
     public UserDto getUserById(Long id) {
-        User user=userRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("User not found with id: "+id));
-        return modelMapper.map(user,UserDto.class);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        return modelMapper.map(user, UserDto.class);
     }
 
     @Override
     @Transactional
     public UserDto addNewUser(AddUserRequestDto addUserRequestDto) {
-        User user=modelMapper.map(addUserRequestDto,User.class);
-        user=userRepository.save(user);
-        return modelMapper.map(user,UserDto.class);
+        User user = modelMapper.map(addUserRequestDto, User.class);
+        user = userRepository.save(user);
+        return modelMapper.map(user, UserDto.class);
     }
 
     @Override
     @Transactional
     public UserDto updateUser(AddUserRequestDto addUserRequestDto, Long id) {
-        User user=userRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("User not found with id: "+id));
-        modelMapper.map(addUserRequestDto,user);
-        User newUser=userRepository.save(user);
-        return modelMapper.map(newUser,UserDto.class);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        modelMapper.map(addUserRequestDto, user);
+        User newUser = userRepository.save(user);
+        return modelMapper.map(newUser, UserDto.class);
     }
 
     @Override
     @Transactional
     public UserDto updateUserValue(Map<String, Object> updates, Long id) {
-        User user=userRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("User not found with id: "+id));
-        updates.forEach((key,value)->
-        {
-            switch (key)
-            {
-                case "name": user.setName((String)value);
-                break;
-                case "number": user.setNumber((String)value);
-                break;
-                case "location": user.setLocation((String)value);
-                break;
-                case "experience": user.setExperience((Integer) value);
-                break;
-                case "profile_photo": user.setProfile_photo((String)value);
-                break;
-                case "latitude": user.setLatitude(((Number)value).doubleValue());
-                break;
-                case "longitude": user.setLongitude(((Number)value).doubleValue());
-                break;
-                case "fcmToken": user.setFcmToken((String) value);
-                break;
-                default:
-                    throw new ResourceNotFoundException("Invalid Field!");
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        updates.forEach((key, value) -> {
+            switch (key) {
+                case "name"          -> user.setName((String) value);
+                case "number"        -> user.setNumber((String) value);
+                case "location"      -> user.setLocation((String) value);
+                case "experience"    -> user.setExperience((Integer) value);
+                case "profile_photo" -> user.setProfile_photo((String) value);
+                case "latitude"      -> user.setLatitude(((Number) value).doubleValue());
+                case "longitude"     -> user.setLongitude(((Number) value).doubleValue());
+                case "fcmToken"      -> user.setFcmToken((String) value);
+                default -> throw new ResourceNotFoundException("Invalid field: " + key);
             }
         });
-        return modelMapper.map(user,UserDto.class);
+        return modelMapper.map(user, UserDto.class);
     }
 
     @Override
     @Transactional
     public void deleteUser(Long id) {
-        if(!userRepository.existsById(id))
-        {
-            throw new ResourceNotFoundException("User not found with id: "+id);
-        }
-        userRepository.deleteById(id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        // Soft delete — set deleted_at instead of removing from DB
+        user.setDeleted_at(LocalDateTime.now());
+        userRepository.save(user);
     }
-//-----------------<User Skills REST API>---------------
+
     @Override
     @Transactional
     public List<SkillsDto> getUserSkills(Long id) {
-        User user=userRepository.findById(id).orElseThrow(()->new ResourceNotFoundException("User not found with id: "+id));
-        return user.getSkills().stream().map(skills1 -> modelMapper.map(skills1,SkillsDto.class)).toList();
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        return user.getSkills().stream()
+                .map(skills1 -> modelMapper.map(skills1, SkillsDto.class))
+                .toList();
     }
 
     @Override
     @Transactional
     public UserDto addSkillToUser(Long userId, Long skillId) {
-        Skills skills=skillRepository.findById(skillId).orElseThrow(()->new ResourceNotFoundException("Skill not found with id: "+skillId));
-        User user=userRepository.findById(userId).orElseThrow(()->new ResourceNotFoundException("User not found with id: "+userId));
+        Skills skills = skillRepository.findById(skillId)
+                .orElseThrow(() -> new ResourceNotFoundException("Skill not found with id: " + skillId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         user.getSkills().add(skills);
-        return modelMapper.map(user,UserDto.class);
+        return modelMapper.map(user, UserDto.class);
     }
 
     @Override
     @Transactional
     public void deleteSkillFromUser(Long userId, Long skillId) {
-        Skills skills=skillRepository.findById(skillId).orElseThrow(()->new ResourceNotFoundException("Skill not found with id: "+skillId));
-        User user=userRepository.findById(userId).orElseThrow(()->new ResourceNotFoundException("User not found with id: "+userId));
+        Skills skills = skillRepository.findById(skillId)
+                .orElseThrow(() -> new ResourceNotFoundException("Skill not found with id: " + skillId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         user.getSkills().remove(skills);
     }
 }

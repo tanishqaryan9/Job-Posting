@@ -2,7 +2,6 @@ package com.Job.Posting.entity;
 
 import com.Job.Posting.entity.type.StatusType;
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,6 +13,13 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Table(
+    name = "job_application",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uq_user_job_application",
+        columnNames = {"user_id", "job_id"}
+    )
+)
 public class JobApplication {
 
     @Id

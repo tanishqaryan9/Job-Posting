@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "users")
+@SQLRestriction("deleted_at IS NULL")  // Hibernate auto-filters soft-deleted rows
 public class User {
 
     @Id
@@ -42,23 +44,26 @@ public class User {
     private Double latitude;
     private Double longitude;
 
-    //FireBase token
     private String fcmToken;
 
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime created_at;
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "createdBy",cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private List<Job> job=new ArrayList<>();
+    // Soft delete column — null means active, set means deleted
+    private LocalDateTime deleted_at;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
-    private Set<JobApplication> jobApplications=new HashSet<>();
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Job> job = new ArrayList<>();
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<JobApplication> jobApplications = new HashSet<>();
 
     @ManyToMany
-    @JoinTable(name = "user_skills",joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "skill_id"))
-    private Set<Skills> skills=new HashSet<>();
-
+    @JoinTable(name = "user_skills",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "skill_id"))
+    private Set<Skills> skills = new HashSet<>();
 }
