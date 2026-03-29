@@ -1,5 +1,6 @@
 package com.Job.Posting.notification.service.impl;
 
+import com.Job.Posting.config.CacheEvictHelper;
 import com.Job.Posting.dto.notification.NotificationDto;
 import com.Job.Posting.entity.Notification;
 import com.Job.Posting.entity.User;
@@ -13,6 +14,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,6 +27,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final ModelMapper modelMapper;
+    private final CacheEvictHelper cacheEvictHelper;
 
     @Override
     @Transactional
@@ -36,6 +40,8 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setBody(body);
         notification.setRead(false);
         notificationRepository.save(notification);
+
+        cacheEvictHelper.evictUnreadCount(user.getId());
 
         //send firebase push only if user has FCM token
         if(user.getFcmToken()!=null && !user.getFcmToken().isEmpty())
@@ -89,6 +95,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Cacheable(value = "notifications", key = "#userId")
     public Long getUnreadCount(Long userId) {
         return notificationRepository.countByUserIdAndIsReadFalse(userId);
     }
@@ -100,6 +107,7 @@ public class NotificationServiceImpl implements NotificationService {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + notificationId));
         notification.setRead(true);
+        cacheEvictHelper.evictUnreadCount(notification.getUser().getId());
         NotificationDto dto = modelMapper.map(notification, NotificationDto.class);
         dto.setUserId(notification.getUser().getId());
         return dto;
@@ -110,8 +118,8 @@ public class NotificationServiceImpl implements NotificationService {
     public void markAllAsRead(Long userId) {
         List<Notification> unread = notificationRepository.findByUserIdAndIsReadFalse(userId);
         unread.forEach(n -> n.setRead(true));
+        cacheEvictHelper.evictUnreadCount(userId);
     }
-
 
     @Override
     public void deleteNotification(Long notificationId) {

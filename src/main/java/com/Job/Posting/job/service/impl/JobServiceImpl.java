@@ -15,6 +15,9 @@ import com.Job.Posting.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +37,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
+    @Cacheable(value = "jobs", key = "'all:' + #page" + ':' + "#size")
     public Page<JobDto> getAllJobs(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return jobRepository.findAll(pageable)
@@ -42,6 +46,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
+    @Cacheable(value = "jobs", key= "#id")
     public JobDto getJobById(Long id) {
         Job job=jobRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Job not found with id: "+id));
         return modelMapper.map(job,JobDto.class);
@@ -49,6 +54,7 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
+    @CacheEvict(value = {"jobs","feed"}, allEntries = true)
     public JobDto addNewJob(AddJobRequestDto addJobRequestDto) {
         User user = userRepository.findById(addJobRequestDto.getCreatedByUserId()).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + addJobRequestDto.getCreatedByUserId()));
 
@@ -69,6 +75,11 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "jobs", key = "#id"),
+            @CacheEvict(value = "jobs", allEntries = true),
+            @CacheEvict(value = "feed", allEntries = true),
+    })
     public JobDto updateJob(AddJobRequestDto addJobRequestDto, Long id) {
         Job job = jobRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
         User user = userRepository.findById(addJobRequestDto.getCreatedByUserId()).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + addJobRequestDto.getCreatedByUserId()));
@@ -89,6 +100,11 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "jobs", key = "#id"),
+            @CacheEvict(value = "jobs", allEntries = true),
+            @CacheEvict(value = "feed", allEntries = true),
+    })
     public JobDto updateJobValue(Map<String, Object> updates, Long id) {
         Job job=jobRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Job not found with id: "+id));
         updates.forEach((key,value)->
@@ -120,6 +136,11 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "jobs", key = "#id"),
+            @CacheEvict(value = "jobs", allEntries = true),
+            @CacheEvict(value = "feed", allEntries = true),
+    })
     public void deleteJob(Long id) {
         if(!jobRepository.existsById(id))
         {
@@ -137,6 +158,10 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "jobs", key = "#jobId"),
+            @CacheEvict(value = "feed", allEntries = true),
+    })
     public JobDto addSkillsToJob(Long jobId, Long skillId) {
         Job job=jobRepository.findById(jobId).orElseThrow(()-> new ResourceNotFoundException("Job not found with id: "+jobId));
         Skills skills = skillRepository.findById(skillId).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + skillId));
@@ -146,6 +171,10 @@ public class JobServiceImpl implements JobService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "jobs", key = "#jobId"),
+            @CacheEvict(value = "feed", allEntries = true),
+    })
     public void removeSkillFromJob(Long jobId, Long skillId) {
         Job job=jobRepository.findById(jobId).orElseThrow(()-> new ResourceNotFoundException("Job not found with id: "+jobId));
         Skills skills = skillRepository.findById(skillId).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + skillId));

@@ -3,6 +3,7 @@ package com.Job.Posting.dto.job;
 import com.Job.Posting.dto.skills.SkillsDto;
 import com.Job.Posting.entity.User;
 import com.Job.Posting.entity.type.JobType;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,6 +16,7 @@ import java.util.Set;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class JobDto {
 
     private Long id;

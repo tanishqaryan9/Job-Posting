@@ -6,11 +6,7 @@ import com.Job.Posting.dto.security.LoginRequestDto;
 import com.Job.Posting.dto.security.LoginResponseDto;
 import com.Job.Posting.dto.security.SignupRequestDto;
 import com.Job.Posting.dto.security.SignupResponseDto;
-import com.Job.Posting.entity.AppUser;
-import com.Job.Posting.entity.RefreshToken;
-import com.Job.Posting.refresh.repository.RefreshTokenRepository;
-import com.Job.Posting.refresh.service.RefreshTokenService;
-import com.Job.Posting.security.AuthUtil;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,25 +22,25 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto loginRequestDto)
+    public ResponseEntity<LoginResponseDto> login(@RequestBody @Valid LoginRequestDto loginRequestDto)
     {
         return ResponseEntity.ok(authService.login(loginRequestDto));
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<SignupResponseDto> login(@RequestBody SignupRequestDto signupRequestDto)
+    public ResponseEntity<SignupResponseDto> signup(@RequestBody @Valid SignupRequestDto signupRequestDto)
     {
         return ResponseEntity.ok(authService.signup(signupRequestDto));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<LoginResponseDto> refresh(@RequestBody RefreshRequestDto refreshRequestDto)
+    public ResponseEntity<LoginResponseDto> refresh(@RequestBody @Valid RefreshRequestDto refreshRequestDto)
     {
         return ResponseEntity.ok(authService.refresh(refreshRequestDto));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestBody RefreshRequestDto refreshRequestDto)
+    public ResponseEntity<Void> logout(@RequestBody @Valid RefreshRequestDto refreshRequestDto)
     {
         authService.logout(refreshRequestDto);
         return ResponseEntity.noContent().build();

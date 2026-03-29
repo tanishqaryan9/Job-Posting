@@ -14,6 +14,7 @@ import com.Job.Posting.util.HaversineUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.lang.module.ResolutionException;
@@ -118,6 +119,7 @@ public class FeedServiceImpl implements FeedService {
     //set intersection
     @Override
     @Transactional
+    @Cacheable(value = "feed", key = "'skill:' + #userId")
     public List<JobDto> getJobsBySkillMatch(Long userId) {
         User user=userRepository.findById(userId).orElseThrow(()->new ResourceNotFoundException("User not found with id: "+userId));
         Set<Skills> userSkills=user.getSkills();
@@ -176,6 +178,7 @@ public class FeedServiceImpl implements FeedService {
     //merging skill matched jobs and nearby jobs and sorts by distance
     @Override
     @Transactional
+    @Cacheable(value = "feed", key = "'combined:' + #userId + ':' + #maxDistanceKm + ':' + #page")
     public List<JobDto> getCombinedFeed(Long userId, Double maxDistanceKm, int page, int size) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));

@@ -32,8 +32,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         ResponseEntity<LoginResponseDto> login =authService.handleOAuh2LoginRequests(user,registrationID);
 
-        response.setStatus(login.getStatusCode().value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setStatus(HttpServletResponse.SC_OK);
+        response.setContentType("application/json");
         response.getWriter().write(objectMapper.writeValueAsString(login.getBody()));
     }
 }

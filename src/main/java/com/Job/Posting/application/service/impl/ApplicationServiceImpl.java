@@ -15,6 +15,8 @@ import com.Job.Posting.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -32,6 +34,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
+    @Cacheable(cacheNames = "application", key = "all")
     public List<ApplicationDto> getAllApplications() {
         List<JobApplication> jobApplications=jobApplicationRepository.findAll();
         return jobApplications.stream().
@@ -40,6 +43,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
+    @Cacheable(cacheNames = "application", key = "#id")
     public ApplicationDto getApplicationByID(Long id) {
         JobApplication jobApplication=jobApplicationRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Application not found with id: "+id));
         return modelMapper.map(jobApplication,ApplicationDto.class);
@@ -47,6 +51,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = "application", allEntries = true)
     public ApplicationDto createApplication(AddApplicationDto addApplicationDto) {
         Job job = jobRepository.findById(addApplicationDto.getJobId()).orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + addApplicationDto.getJobId()));
         User user = userRepository.findById(addApplicationDto.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + addApplicationDto.getUserId()));
@@ -77,6 +82,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = "application", allEntries = true)
     public ApplicationDto updateApplication(AddApplicationDto addApplicationDto, Long id) {
         JobApplication jobApplication = jobApplicationRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
         Job job = jobRepository.findById(addApplicationDto.getJobId()).orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + addApplicationDto.getJobId()));
@@ -89,6 +95,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = "application", allEntries = true)
     public ApplicationDto updateApplicationValue(Map<String, Object> update, Long id) {
         JobApplication jobApplication=jobApplicationRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Application not found with id: "+id));
         update.forEach((key,value)->{
@@ -111,6 +118,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = "application", allEntries = true)
     public void deleteApplication(Long id) {
         if(!jobApplicationRepository.existsById(id))
         {
