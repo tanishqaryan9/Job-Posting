@@ -37,7 +37,9 @@ public class SecurityConfig {
         httpSecurity
                 .cors(cors-> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth-> auth
-                .requestMatchers("/auth/**","/public/**","/actuator/health","/v3/api-docs/**","/swagger-ui/**","/swagger-ui.html").permitAll()
+                .requestMatchers("/api/v1/auth/**", "/api/v1/public/**",
+                        "/actuator/health", "/v3/api-docs/**",
+                        "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated()
         ).csrf(csrfConfig->csrfConfig.disable())
                 .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
