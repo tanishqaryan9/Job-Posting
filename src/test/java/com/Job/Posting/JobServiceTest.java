@@ -139,22 +139,23 @@ class JobServiceTest {
 
     @Test
     void deleteJob_shouldDelete_whenExists() {
-        when(jobRepository.existsById(1L)).thenReturn(true);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
 
         jobService.deleteJob(1L);
 
-        verify(jobRepository).deleteById(1L);
+        verify(jobRepository).save(any(Job.class)); // soft delete = save with deleted_at set
+        verify(jobRepository, never()).deleteById(any());
     }
 
     @Test
     void deleteJob_shouldThrow_whenNotFound() {
-        when(jobRepository.existsById(99L)).thenReturn(false);
+        when(jobRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> jobService.deleteJob(99L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("99");
 
-        verify(jobRepository, never()).deleteById(any());
+        verify(jobRepository, never()).save(any());
     }
 
     @Test
