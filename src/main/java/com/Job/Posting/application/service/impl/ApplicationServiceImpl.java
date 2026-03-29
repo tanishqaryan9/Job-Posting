@@ -2,6 +2,7 @@ package com.Job.Posting.application.service.impl;
 
 import com.Job.Posting.application.repository.JobApplicationRepository;
 import com.Job.Posting.application.service.ApplicationService;
+import com.Job.Posting.dto.kafka.ApplicationSubmittedEvent;
 import com.Job.Posting.dto.application.AddApplicationDto;
 import com.Job.Posting.dto.application.ApplicationDto;
 import com.Job.Posting.entity.Job;
@@ -11,6 +12,7 @@ import com.Job.Posting.entity.type.StatusType;
 import com.Job.Posting.exception.DuplicateResourceException;
 import com.Job.Posting.exception.ResourceNotFoundException;
 import com.Job.Posting.job.repository.JobRepository;
+import com.Job.Posting.kafka.ApplicationEventProducer;
 import com.Job.Posting.notification.service.NotificationService;
 import com.Job.Posting.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -34,6 +36,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final ApplicationEventProducer applicationEventProducer;
 
     @Override
     @Transactional
@@ -75,11 +78,18 @@ public class ApplicationServiceImpl implements ApplicationService {
         jobApplication.setStatus(StatusType.PENDING);
         JobApplication saved = jobApplicationRepository.save(jobApplication);
 
-        notificationService.sendNotification(user, "Application Submitted",
-                "Your application for " + job.getTitle() + " has been submitted successfully!");
+        ApplicationSubmittedEvent event = new ApplicationSubmittedEvent();
+        event.setApplicationId(saved.getId());
+        event.setUserId(user.getId());
+        event.setJobId(job.getId());
+        event.setJobTitle(job.getTitle());
+        event.setUserName(user.getName());
+        event.setUserFcmToken(user.getFcmToken());
+        event.setJobCreatorId(job.getCreatedBy().getId());
+        event.setJobCreatorFcmToken(job.getCreatedBy().getFcmToken());
 
-        notificationService.sendNotification(job.getCreatedBy(), "New Application",
-                user.getName() + " has applied for your job " + job.getTitle());
+        applicationEventProducer.publishApplicationSubmitted(event);
+        // No direct call to NotificationService!
 
         return modelMapper.map(saved, ApplicationDto.class);
     }
