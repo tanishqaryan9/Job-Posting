@@ -1,7 +1,17 @@
 pipeline {
     agent any
 
+    tools {
+        jdk 'JDK21'
+        maven 'Maven'
+    }
+
     environment {
+        // ---- FIX JAVA_HOME FOR WINDOWS AGENT ----
+        JAVA_HOME = tool('JDK21')
+        PATH = "${JAVA_HOME}\\bin;${env.PATH}"
+
+        // ---- APP ENV ----
         DB_URL      = 'jdbc:postgresql://localhost:5432/jobposting_test'
         DB_USERNAME = 'postgres'
         DB_PASSWORD = 'postgres'
@@ -12,21 +22,23 @@ pipeline {
         MAVEN_REPO  = 'C:\\ProgramData\\Jenkins\\.m2\\repository'
     }
 
-    tools {
-        jdk   'JDK21'
-        maven 'Maven'
-    }
-
     stages {
 
+        // ===============================
+        // CHECKOUT
+        // ===============================
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
+        // ===============================
+        // START DOCKER SERVICES
+        // ===============================
         stage('Start Services') {
             steps {
+
                 bat '''
                 echo Cleaning old containers...
                 docker rm -f postgres_test redis_test 2>nul
@@ -43,6 +55,7 @@ pipeline {
                   -p 6379:6379 redis:latest
                 '''
 
+                // ---- WAIT FOR POSTGRES ----
                 bat '''
                 echo Waiting for Postgres...
 
@@ -55,13 +68,14 @@ pipeline {
                 set /a retries-=1
                 if %retries% LEQ 0 exit /b 1
 
-                timeout /t 2 >nul
+                ping -n 3 127.0.0.1 >nul
                 goto pgloop
 
                 :pgready
                 echo Postgres READY
                 '''
 
+                // ---- WAIT FOR REDIS ----
                 bat '''
                 echo Waiting for Redis...
 
@@ -74,7 +88,7 @@ pipeline {
                 set /a retries-=1
                 if %retries% LEQ 0 exit /b 1
 
-                timeout /t 2 >nul
+                ping -n 3 127.0.0.1 >nul
                 goto redisloop
 
                 :redisready
@@ -83,6 +97,9 @@ pipeline {
             }
         }
 
+        // ===============================
+        // RUN TESTS
+        // ===============================
         stage('Test') {
             steps {
                 bat '''
@@ -101,25 +118,38 @@ pipeline {
 
             post {
                 always {
-                    junit 'target/surefire-reports/*.xml'
-                    archiveArtifacts artifacts: 'target/surefire-reports/**', allowEmptyArchive: true
+                    junit allowEmptyResults: true,
+                          testResults: 'target/surefire-reports/*.xml'
+
+                    archiveArtifacts artifacts: 'target/surefire-reports/**',
+                                     allowEmptyArchive: true
                 }
             }
         }
 
+        // ===============================
+        // BUILD JAR
+        // ===============================
         stage('Build JAR') {
             steps {
-                bat 'mvn package -DskipTests --no-transfer-progress "-Dmaven.repo.local=%MAVEN_REPO%"'
+                bat '''
+                mvn package -DskipTests --no-transfer-progress ^
+                "-Dmaven.repo.local=%MAVEN_REPO%"
+                '''
             }
 
             post {
                 success {
-                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                    archiveArtifacts artifacts: 'target/*.jar',
+                                     fingerprint: true
                 }
             }
         }
     }
 
+    // ===============================
+    // CLEANUP
+    // ===============================
     post {
         always {
             bat '''
