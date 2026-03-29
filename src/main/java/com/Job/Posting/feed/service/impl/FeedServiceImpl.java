@@ -17,7 +17,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
-import java.lang.module.ResolutionException;
+
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -36,7 +36,7 @@ public class FeedServiceImpl implements FeedService {
     @Override
     @Transactional
     public List<JobDto> getKNearestJobs(Long userId, int k) {
-        User user=userRepository.findById(userId).orElseThrow(()->new ResolutionException("User not found with id: "+userId));
+        User user=userRepository.findById(userId).orElseThrow(()->new ResourceNotFoundException("User not found with id: "+userId));
         List<Job> allJobs=jobRepository.findAll();
 
         //Min heap will keep nearest job at top
@@ -67,20 +67,21 @@ public class FeedServiceImpl implements FeedService {
     @Override
     @Transactional
     public List<JobDto> getJobsBySalaryRange(Double min, Double max) {
-        List<Job> sortedJobs=jobRepository.findAllByOrderBySalaryAsc();
+        List<Job> sortedJobs = jobRepository.findAllByOrderBySalaryAsc();
+        if (sortedJobs.isEmpty()) return List.of();
 
-        if(sortedJobs.isEmpty()) return List.of();
+        int left = binarySearchLeft(sortedJobs, min);
+        int right = binarySearchRight(sortedJobs, max);
 
-        //BS for left boundary
-        int left=binarySearchLeft(sortedJobs,min);
-        int right=binarySearchRight(sortedJobs,max);
-        if(left>right) return List.of();
-        return sortedJobs.subList(left,right+1).stream().map(job->modelMapper.map(job,JobDto.class)).toList();
+        if (left > right || right == -1 || left == -1) return List.of(); // fix: handle no match
+        return sortedJobs.subList(left, right + 1).stream()
+                .map(job -> modelMapper.map(job, JobDto.class))
+                .toList();
     }
     // finds first index where salary >= target
     private int binarySearchLeft(List<Job> jobs, Double target)
     {
-        int low=0,high=jobs.size()-1,result=0;
+        int low=0,high=jobs.size()-1,result=-1;
         while(low<=high)
         {
             int mid=low +(high-low)/2;
@@ -97,20 +98,15 @@ public class FeedServiceImpl implements FeedService {
         return result;
     }
     // finds last index where salary <= target
-    private int binarySearchRight(List<Job> jobs, Double target)
-    {
-        int low=0,high=jobs.size()-1,result=jobs.size()-1;
-        while(low<=high)
-        {
-            int mid=low +(high-low)/2;
-            if(jobs.get(mid).getSalary()!=null && jobs.get(mid).getSalary() <= target)
-            {
-                result=mid;
-                low=mid+1;
-            }
-            else
-            {
-                high=mid-1;
+    private int binarySearchRight(List<Job> jobs, Double target) {
+        int low = 0, high = jobs.size() - 1, result = -1; // fix: start at -1 not size-1
+        while (low <= high) {
+            int mid = low + (high - low) / 2;
+            if (jobs.get(mid).getSalary() != null && jobs.get(mid).getSalary() <= target) {
+                result = mid;
+                low = mid + 1;
+            } else {
+                high = mid - 1;
             }
         }
         return result;

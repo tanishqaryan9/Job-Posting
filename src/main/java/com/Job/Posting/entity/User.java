@@ -50,6 +50,9 @@ public class User {
     @Column(updatable = false)
     private LocalDateTime created_at;
 
+    @CreationTimestamp
+    private LocalDateTime updated_at;
+
     // Soft delete column — null means active, set means deleted
     private LocalDateTime deleted_at;
 
