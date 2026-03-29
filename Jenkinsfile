@@ -6,9 +6,18 @@ pipeline {
         maven 'Maven'
     }
 
+    options {
+        durabilityHint('PERFORMANCE_OPTIMIZED')
+        skipDefaultCheckout()
+        timestamps()
+    }
+
     environment {
-        POSTGRES_CONTAINER = "postgres_test"
-        REDIS_CONTAINER    = "redis_test"
+        MAVEN_REPO = 'C:\\ProgramData\\Jenkins\\.m2\\repository'
+        DB_NAME = 'jobposting_test'
+        DB_USER = 'postgres'
+        DB_PASS = 'postgres'
+        DB_PORT = '5433'
     }
 
     stages {
@@ -23,18 +32,18 @@ pipeline {
             steps {
                 bat '''
                 echo Cleaning old containers...
-                docker rm -f %POSTGRES_CONTAINER% %REDIS_CONTAINER% 2>nul
+                docker rm -f postgres_test redis_test 2>nul
 
                 echo Starting PostgreSQL...
-                docker run -d --name %POSTGRES_CONTAINER% ^
-                  -e POSTGRES_DB=jobposting_test ^
-                  -e POSTGRES_USER=postgres ^
-                  -e POSTGRES_PASSWORD=postgres ^
-                  -p 5433:5432 postgres:15
+                docker run -d --name postgres_test ^
+                    -e POSTGRES_DB=%DB_NAME% ^
+                    -e POSTGRES_USER=%DB_USER% ^
+                    -e POSTGRES_PASSWORD=%DB_PASS% ^
+                    -p %DB_PORT%:5432 postgres:15
 
                 echo Starting Redis...
-                docker run -d --name %REDIS_CONTAINER% ^
-                  -p 6379:6379 redis:latest
+                docker run -d --name redis_test ^
+                    -p 6379:6379 redis:latest
                 '''
             }
         }
@@ -43,21 +52,21 @@ pipeline {
             steps {
                 bat '''
                 echo Waiting for PostgreSQL...
-                :waitpg
-                docker exec %POSTGRES_CONTAINER% pg_isready >nul 2>&1
-                if errorlevel 1 (
-                    timeout /t 3 >nul
-                    goto waitpg
+                for /l %%i in (1,1,30) do (
+                    docker exec postgres_test pg_isready >nul 2>&1 && goto :pgready
+                    timeout /t 2 >nul
                 )
+                exit /b 1
+                :pgready
                 echo PostgreSQL READY
 
                 echo Waiting for Redis...
-                :waitredis
-                docker exec %REDIS_CONTAINER% redis-cli ping | findstr PONG >nul
-                if errorlevel 1 (
-                    timeout /t 3 >nul
-                    goto waitredis
+                for /l %%i in (1,1,30) do (
+                    docker exec redis_test redis-cli ping | findstr PONG >nul && goto :redisready
+                    timeout /t 2 >nul
                 )
+                exit /b 1
+                :redisready
                 echo Redis READY
                 '''
             }
@@ -66,42 +75,54 @@ pipeline {
         stage('Run Tests') {
             steps {
                 bat '''
-                mvn clean verify ^
+                mvn -T 1C clean verify ^
+                 -Dmaven.repo.local=%MAVEN_REPO% ^
                  -Dspring.profiles.active=test ^
-                 -Dspring.datasource.url=jdbc:postgresql://localhost:5433/jobposting_test ^
-                 -Dspring.datasource.username=postgres ^
-                 -Dspring.datasource.password=postgres ^
+                 -Dspring.datasource.url=jdbc:postgresql://localhost:%DB_PORT%/%DB_NAME% ^
+                 -Dspring.datasource.username=%DB_USER% ^
+                 -Dspring.datasource.password=%DB_PASS% ^
                  -Dspring.data.redis.host=localhost ^
                  -Dspring.data.redis.port=6379 ^
                  -Djwt.secretKey=ci-test-secret-key-long-enough-for-hmac-256-signing ^
-                 -Dspring.jpa.hibernate.ddl-auto=create-drop
+                 --no-transfer-progress
                 '''
             }
         }
 
         stage('Build JAR') {
             steps {
-                bat 'mvn -DskipTests package'
+                bat '''
+                mvn -T 1C package -DskipTests ^
+                 -Dmaven.repo.local=%MAVEN_REPO% ^
+                 --no-transfer-progress
+                '''
             }
         }
 
         stage('Docker Build') {
             steps {
-                bat 'docker build -t todo-backend .'
+                bat '''
+                docker build -t jobposting-app:latest .
+                '''
             }
         }
     }
 
     post {
-        success {
-            echo '✅ CI Pipeline SUCCESS'
-        }
-        failure {
-            echo '❌ CI Pipeline FAILED'
-        }
         always {
-            bat 'docker rm -f %POSTGRES_CONTAINER% %REDIS_CONTAINER% 2>nul'
+            bat '''
+            echo Stopping containers...
+            docker rm -f postgres_test redis_test 2>nul
+            '''
             cleanWs()
+        }
+
+        success {
+            echo 'CI Pipeline SUCCESS'
+        }
+
+        failure {
+            echo 'CI Pipeline FAILED'
         }
     }
 }
