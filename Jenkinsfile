@@ -43,25 +43,21 @@ pipeline {
             steps {
                 bat '''
                 echo Waiting for PostgreSQL...
-
-                powershell -Command ^
-                "for ($i=0; $i -lt 30; $i++) { ^
-                    docker exec %POSTGRES_CONTAINER% pg_isready 2>$null; ^
-                    if ($LASTEXITCODE -eq 0) { exit 0 } ^
-                    Start-Sleep -Seconds 2 ^
-                }; exit 1"
-
+                :waitpg
+                docker exec %POSTGRES_CONTAINER% pg_isready >nul 2>&1
+                if errorlevel 1 (
+                    timeout /t 3 >nul
+                    goto waitpg
+                )
                 echo PostgreSQL READY
 
                 echo Waiting for Redis...
-
-                powershell -Command ^
-                "for ($i=0; $i -lt 30; $i++) { ^
-                    docker exec %REDIS_CONTAINER% redis-cli ping 2>$null | findstr PONG; ^
-                    if ($LASTEXITCODE -eq 0) { exit 0 } ^
-                    Start-Sleep -Seconds 2 ^
-                }; exit 1"
-
+                :waitredis
+                docker exec %REDIS_CONTAINER% redis-cli ping | findstr PONG >nul
+                if errorlevel 1 (
+                    timeout /t 3 >nul
+                    goto waitredis
+                )
                 echo Redis READY
                 '''
             }
@@ -71,7 +67,6 @@ pipeline {
             steps {
                 bat '''
                 mvn clean verify ^
-                 --no-transfer-progress ^
                  -Dspring.profiles.active=test ^
                  -Dspring.datasource.url=jdbc:postgresql://localhost:5433/jobposting_test ^
                  -Dspring.datasource.username=postgres ^
@@ -92,28 +87,21 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                bat '''
-                docker build -t todo-backend .
-                '''
+                bat 'docker build -t todo-backend .'
             }
         }
     }
 
     post {
-        always {
-            bat '''
-            echo Stopping containers...
-            docker rm -f %POSTGRES_CONTAINER% %REDIS_CONTAINER% 2>nul
-            '''
-            cleanWs()
-        }
-
         success {
             echo '✅ CI Pipeline SUCCESS'
         }
-
         failure {
             echo '❌ CI Pipeline FAILED'
+        }
+        always {
+            bat 'docker rm -f %POSTGRES_CONTAINER% %REDIS_CONTAINER% 2>nul'
+            cleanWs()
         }
     }
 }
