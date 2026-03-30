@@ -13,7 +13,7 @@ public interface NotificationService {
 
     List<NotificationDto> getUnreadNotifications(Long userId);
 
-    Long getUnreadCount(Long userId);
+    long getUnreadCount(Long userId);
 
     NotificationDto markAsRead(Long id);
 

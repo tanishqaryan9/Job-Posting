@@ -25,47 +25,78 @@ public class JWTAuthFilter extends OncePerRequestFilter {
     private final AppUserRepository appUserRepository;
     private final HandlerExceptionResolver handlerExceptionResolver;
 
+    // Paths that should skip JWT validation
+    private static final String[] EXCLUDED_PATHS = {
+            "/auth",
+            "/public",
+            "/actuator",
+            "/v3/api-docs",
+            "/swagger-ui",
+            "/api/monitoring"
+    };
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        try
-        {
-            log.info("Incoming Requests: {}",request.getRequestURI());
+        try {
+            String requestURI = request.getRequestURI();
+            log.info("Incoming Requests: {}", requestURI);
 
-            final String requestAuthToken = request.getHeader("Authorization");
-            if(requestAuthToken==null || !requestAuthToken.startsWith("Bearer "))
-            {
-                filterChain.doFilter(request,response);
+            // Skip JWT validation for excluded paths
+            if (shouldExcludePath(requestURI)) {
+                filterChain.doFilter(request, response);
                 return;
             }
+
+            final String requestAuthToken = request.getHeader("Authorization");
+            if (requestAuthToken == null || !requestAuthToken.startsWith("Bearer ")) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             String token = requestAuthToken.split("Bearer ")[1];
             String username = null;
+
             try {
                 username = authUtil.getUsernameFromToken(token);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 log.warn("Invalid or expired JWT token: {}", e.getMessage());
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 response.getWriter().write("{\"error\": \"Invalid or expired token\", \"statusCode\": 401}");
                 return;
             }
-            if(username!=null && SecurityContextHolder.getContext().getAuthentication()==null)
-            {
+
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 AppUser user = appUserRepository.findByUsername(username);
                 if (user == null) {
                     filterChain.doFilter(request, response);
                     return;
                 }
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user,null,user.getAuthorities());
+                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
-            filterChain.doFilter(request,response);
+
+            filterChain.doFilter(request, response);
             return;
+
+        } catch (Exception ex) {
+            handlerExceptionResolver.resolveException(request, response, null, ex);
         }
-        catch (Exception ex)
-        {
-            handlerExceptionResolver.resolveException(request,response,null,ex);
+    }
+
+    private boolean shouldExcludePath(String requestPath) {
+        for (String excludedPath : EXCLUDED_PATHS) {
+            if (requestPath.startsWith(excludedPath)) {
+                return true;
+            }
         }
+        return false;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getRequestURI();
+        return shouldExcludePath(path);
     }
 }

@@ -104,8 +104,12 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Cacheable(value = "notifications", key = "#userId")
-    public Long getUnreadCount(Long userId) {
-        return notificationRepository.countByUserIdAndIsReadFalse(userId);
+    public long getUnreadCount(Long userId) {
+
+        System.out.println("🔥 DB HIT");
+
+        return notificationRepository
+                .countByUserIdAndIsReadFalse(userId);
     }
 
     @Override

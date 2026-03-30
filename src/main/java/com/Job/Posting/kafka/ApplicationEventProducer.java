@@ -20,21 +20,37 @@ public class ApplicationEventProducer {
     public void publishApplicationSubmitted(ApplicationSubmittedEvent event) {
         try {
             String json = objectMapper.writeValueAsString(event);
-            kafkaTemplate.send("application.submitted", String.valueOf(event.getApplicationId()), json);
-            log.info("Published application.submitted for applicationId={}", event.getApplicationId());
+            kafkaTemplate.send("application.submitted", String.valueOf(event.getApplicationId()), json)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                            log.error("Failed to publish application.submitted for id={}: {}",
+                                    event.getApplicationId(), ex.getMessage());
+                            // Don't rethrow — application was already saved to DB
+                        } else {
+                            log.info("Published application.submitted for applicationId={}",
+                                    event.getApplicationId());
+                        }
+                    });
         } catch (JsonProcessingException e) {
-            log.error("Failed to serialize ApplicationSubmittedEvent", e);
+            log.error("Failed to serialize ApplicationSubmittedEvent: {}", e.getMessage());
         }
     }
 
     public void publishStatusChanged(ApplicationStatusChangedEvent event) {
         try {
             String json = objectMapper.writeValueAsString(event);
-            kafkaTemplate.send("application.status_changed", String.valueOf(event.getApplicationId()), json);
-            log.info("Published application.status_changed for applicationId={}, status={}",
-                    event.getApplicationId(), event.getNewStatus());
+            kafkaTemplate.send("application.status_changed", String.valueOf(event.getApplicationId()), json)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                            log.error("Failed to publish application.status_changed for id={}: {}",
+                                    event.getApplicationId(), ex.getMessage());
+                        } else {
+                            log.info("Published application.status_changed for applicationId={}, status={}",
+                                    event.getApplicationId(), event.getNewStatus());
+                        }
+                    });
         } catch (JsonProcessingException e) {
-            log.error("Failed to serialize ApplicationStatusChangedEvent", e);
+            log.error("Failed to serialize ApplicationStatusChangedEvent: {}", e.getMessage());
         }
     }
 }
