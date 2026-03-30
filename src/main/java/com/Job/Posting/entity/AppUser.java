@@ -31,6 +31,10 @@ public class AppUser implements UserDetails {
     @Enumerated(EnumType.STRING)
     private AuthProviderType providerType;
 
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_profile_id", referencedColumnName = "id")
+    private User userProfile;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of();

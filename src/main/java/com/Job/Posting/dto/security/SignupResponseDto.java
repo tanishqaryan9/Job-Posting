@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class SignupResponseDto {
 
-    private Long id;
+    private Long appUserId;
+    private Long profileId;
     private String username;
+    private String name;
+    private String location;
 }

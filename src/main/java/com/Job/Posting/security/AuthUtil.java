@@ -27,35 +27,33 @@ public class AuthUtil {
     private String jwtSecretKey;
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
-    {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder()
-    {
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    private SecretKey getSecretKey()
-    {
+    private SecretKey getSecretKey() {
         return Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String GenerateAccessToken(AppUser user)
-    {
+    public String GenerateAccessToken(AppUser user) {
+        Long profileId = user.getUserProfile() != null ? user.getUserProfile().getId() : null;
+
         return Jwts.builder()
-                .claim("userId",user.getId())
+                .claim("appUserId", user.getId())
+                .claim("profileId", profileId)   // frontend can extract profileId directly from token
                 .subject(user.getUsername())
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis()+1000*60*15))
+                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 15))
                 .signWith(getSecretKey())
                 .compact();
     }
 
-    public String getUsernameFromToken(String token)
-    {
+    public String getUsernameFromToken(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(getSecretKey())
                 .build()
@@ -64,51 +62,39 @@ public class AuthUtil {
         return claims.getSubject();
     }
 
-    public AuthProviderType getProviderTypeFromRegistrationID(String registrationid)
-    {
-        return switch (registrationid.toLowerCase())
-        {
-            case "google"-> AuthProviderType.GOOGLE;
-            case "github"-> AuthProviderType.GITHUB;
-            case "facebook"-> AuthProviderType.FACEBOOK;
-            case "twitter"-> AuthProviderType.TWITTER;
-            default -> throw new IllegalArgumentException("Unsupported OAuth2 Provider: "+registrationid);
+    public AuthProviderType getProviderTypeFromRegistrationID(String registrationid) {
+        return switch (registrationid.toLowerCase()) {
+            case "google"   -> AuthProviderType.GOOGLE;
+            case "github"   -> AuthProviderType.GITHUB;
+            case "facebook" -> AuthProviderType.FACEBOOK;
+            case "twitter"  -> AuthProviderType.TWITTER;
+            default -> throw new IllegalArgumentException("Unsupported OAuth2 Provider: " + registrationid);
         };
     }
 
-    public String determineProviderIDFromOAuth2User(OAuth2User user, String registrationid)
-    {
-        String providerId = switch (registrationid.toLowerCase())
-        {
-            case "google"-> user.getAttribute("sub");
-            case "github"-> user.getAttribute("id").toString();
-            default ->
-                    {
-                        log.error("Unsupported OAuth2 Provider: {}",registrationid);
-                    throw new IllegalArgumentException("Unsupported OAuth2 Provider: "+registrationid);
-                    }
+    public String determineProviderIDFromOAuth2User(OAuth2User user, String registrationid) {
+        String providerId = switch (registrationid.toLowerCase()) {
+            case "google" -> user.getAttribute("sub");
+            case "github" -> user.getAttribute("id").toString();
+            default -> {
+                log.error("Unsupported OAuth2 Provider: {}", registrationid);
+                throw new IllegalArgumentException("Unsupported OAuth2 Provider: " + registrationid);
+            }
         };
-        if(providerId==null || providerId.isBlank())
-        {
-            log.error("Unable to determine providerID for Provider: {}",registrationid);
+        if (providerId == null || providerId.isBlank()) {
+            log.error("Unable to determine providerID for Provider: {}", registrationid);
             throw new IllegalArgumentException("Unable to determine providerID for OAuth2 login");
         }
         return providerId;
     }
 
-    public String determineUsernameFromOAuth2User(OAuth2User user, String registrationId, String providerId)
-    {
+    public String determineUsernameFromOAuth2User(OAuth2User user, String registrationId, String providerId) {
         String email = user.getAttribute("email");
-        if(email!=null && !email.isBlank())
-        {
-            return email;
-        }
-
-        return switch (registrationId.toLowerCase())
-        {
-            case "google"-> user.getAttribute("sub");
-            case "github"-> user.getAttribute("login");
-            default ->providerId;
+        if (email != null && !email.isBlank()) return email;
+        return switch (registrationId.toLowerCase()) {
+            case "google" -> user.getAttribute("sub");
+            case "github" -> user.getAttribute("login");
+            default -> providerId;
         };
     }
 }

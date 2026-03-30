@@ -8,13 +8,14 @@ import com.Job.Posting.dto.security.SignupRequestDto;
 import com.Job.Posting.dto.security.SignupResponseDto;
 import com.Job.Posting.entity.AppUser;
 import com.Job.Posting.entity.RefreshToken;
+import com.Job.Posting.entity.User;
 import com.Job.Posting.entity.type.AuthProviderType;
 import com.Job.Posting.refresh.repository.RefreshTokenRepository;
 import com.Job.Posting.refresh.service.RefreshTokenService;
 import com.Job.Posting.security.AuthUtil;
+import com.Job.Posting.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -31,88 +32,130 @@ public class AuthService {
     private final AuthUtil authUtil;
     private final AuthenticationManager authenticationManager;
     private final AppUserRepository appUserRepository;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final ModelMapper modelMapper;
     private final RefreshTokenService refreshTokenService;
     private final RefreshTokenRepository refreshTokenRepository;
 
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
+        Authentication authorization = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        loginRequestDto.getUsername(), loginRequestDto.getPassword()));
 
-        Authentication authorization = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequestDto.getUsername(),loginRequestDto.getPassword()));
+        AppUser appUser = (AppUser) authorization.getPrincipal();
 
-        AppUser user = (AppUser) authorization.getPrincipal();
+        String accessToken = authUtil.GenerateAccessToken(appUser);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(appUser);
 
-        String accessToken = authUtil.GenerateAccessToken(user);
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+        Long profileId = appUser.getUserProfile() != null ? appUser.getUserProfile().getId() : null;
 
-        return new LoginResponseDto(user.getId(),accessToken,refreshToken.getToken());
+        return new LoginResponseDto(appUser.getId(), profileId, accessToken, refreshToken.getToken());
     }
 
     public LoginResponseDto refresh(RefreshRequestDto refreshRequestDto) {
-
         RefreshToken newRefreshToken = refreshTokenService.rotateRefreshToken(refreshRequestDto.getRefreshToken());
+        AppUser appUser = newRefreshToken.getAppUser();
 
-        String newAccessToken = authUtil.GenerateAccessToken(newRefreshToken.getAppUser());
+        String newAccessToken = authUtil.GenerateAccessToken(appUser);
+        Long profileId = appUser.getUserProfile() != null ? appUser.getUserProfile().getId() : null;
 
-        return new LoginResponseDto(newRefreshToken.getAppUser().getId(), newAccessToken, newRefreshToken.getToken());
+        return new LoginResponseDto(appUser.getId(), profileId, newAccessToken, newRefreshToken.getToken());
     }
 
-    private AppUser signUpInternal(SignupRequestDto signupRequestDto, AuthProviderType authProviderType, String providerId)
-    {
-        AppUser user= appUserRepository.findByUsername(signupRequestDto.getUsername());
-        if(user!=null)
-        {
-            throw new IllegalArgumentException("User already exists");
+    @Transactional
+    public SignupResponseDto signup(SignupRequestDto signupRequestDto) {
+        // Check username not already taken
+        if (appUserRepository.findByUsername(signupRequestDto.getUsername()) != null) {
+            throw new IllegalArgumentException("Username already exists");
         }
-        return appUserRepository
-                .save(AppUser.builder()
-                        .username(signupRequestDto
-                        .getUsername()).password(passwordEncoder.encode(signupRequestDto.getPassword()!=null?signupRequestDto.getPassword():null))
-                        .providerId(providerId)
-                        .providerType(authProviderType)
-                        .build());
+
+        // 1. Create User profile first
+        User userProfile = new User();
+        userProfile.setName(signupRequestDto.getName());
+        userProfile.setNumber(signupRequestDto.getNumber());
+        userProfile.setLocation(signupRequestDto.getLocation());
+        userProfile.setExperience(signupRequestDto.getExperience());
+        userProfile.setLatitude(signupRequestDto.getLatitude());
+        userProfile.setLongitude(signupRequestDto.getLongitude());
+        User savedProfile = userRepository.save(userProfile);
+
+        // 2. Create AppUser and link to profile
+        AppUser appUser = AppUser.builder()
+                .username(signupRequestDto.getUsername())
+                .password(passwordEncoder.encode(signupRequestDto.getPassword()))
+                .providerType(AuthProviderType.EMAIL)
+                .providerId(null)
+                .userProfile(savedProfile)
+                .build();
+        AppUser savedAppUser = appUserRepository.save(appUser);
+
+        return new SignupResponseDto(
+                savedAppUser.getId(),
+                savedProfile.getId(),
+                savedAppUser.getUsername(),
+                savedProfile.getName(),
+                savedProfile.getLocation()
+        );
     }
 
     public void logout(RefreshRequestDto refreshRequestDto) {
-
-        RefreshToken token = refreshTokenRepository.findByToken(refreshRequestDto.getRefreshToken()).orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
+        RefreshToken token = refreshTokenRepository.findByToken(refreshRequestDto.getRefreshToken())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
         refreshTokenService.deleteByUser(token.getAppUser());
-    }
-
-    public SignupResponseDto signup(SignupRequestDto signupRequestDto) {
-
-        AppUser appUser = signUpInternal(signupRequestDto,AuthProviderType.EMAIL,null);
-        return modelMapper.map(appUser,SignupResponseDto.class);
     }
 
     @Transactional
     public ResponseEntity<LoginResponseDto> handleOAuh2LoginRequests(OAuth2User user, String registrationID) {
-        //fetch providerType and providerID
-        //save providerType and providerID in DB sp user cannot log in with both Google and then GitHub
-        //if the user has account: directly log in
-        //otherwise: first signup and then login
         AuthProviderType providerType = authUtil.getProviderTypeFromRegistrationID(registrationID);
-        String providerId = authUtil.determineProviderIDFromOAuth2User(user,registrationID);
+        String providerId = authUtil.determineProviderIDFromOAuth2User(user, registrationID);
 
-        AppUser user1 = appUserRepository.findByProviderIdAndProviderType(providerId,providerType);
+        AppUser existingAppUser = appUserRepository.findByProviderIdAndProviderType(providerId, providerType);
 
         String email = user.getAttribute("email");
         AppUser emailUser = appUserRepository.findByUsername(email);
 
-        if (user1 != null)
-        {
-            user1.setUsername(email);
-            appUserRepository.save(user1);
+        if (existingAppUser != null) {
+            // Returning OAuth2 user — update email if changed
+            if (email != null && !email.isBlank()) {
+                existingAppUser.setUsername(email);
+                appUserRepository.save(existingAppUser);
+            }
         } else if (emailUser != null) {
             throw new BadCredentialsException("Email already registered with " + emailUser.getProviderType());
         } else {
+            // New OAuth2 user — create AppUser without full profile
+            // Profile can be completed later via PUT /users/{id}
             String username = authUtil.determineUsernameFromOAuth2User(user, registrationID, providerId);
-            user1 = signUpInternal(new SignupRequestDto(username, null),providerType,providerId);
+            existingAppUser = AppUser.builder()
+                    .username(username)
+                    .password(null)
+                    .providerId(providerId)
+                    .providerType(providerType)
+                    .userProfile(null) // OAuth2 users complete profile separately
+                    .build();
+            existingAppUser = appUserRepository.save(existingAppUser);
         }
 
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user1);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(existingAppUser);
+        String accessToken = authUtil.GenerateAccessToken(existingAppUser);
+        Long profileId = existingAppUser.getUserProfile() != null
+                ? existingAppUser.getUserProfile().getId() : null;
 
-        LoginResponseDto loginResponseDto = new LoginResponseDto(user1.getId(),authUtil.GenerateAccessToken(user1),refreshToken.getToken());
-        return ResponseEntity.ok(loginResponseDto);
+        return ResponseEntity.ok(new LoginResponseDto(
+                existingAppUser.getId(), profileId, accessToken, refreshToken.getToken()));
+    }
+
+    // Internal helper still used by OAuth2 path
+    private AppUser signUpInternal(String username, AuthProviderType providerType, String providerId) {
+        if (appUserRepository.findByUsername(username) != null) {
+            throw new IllegalArgumentException("User already exists");
+        }
+        return appUserRepository.save(AppUser.builder()
+                .username(username)
+                .password(null)
+                .providerId(providerId)
+                .providerType(providerType)
+                .userProfile(null)
+                .build());
     }
 }
