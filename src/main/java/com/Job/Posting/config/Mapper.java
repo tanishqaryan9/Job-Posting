@@ -24,6 +24,37 @@ public class Mapper {
     public ModelMapper modelMapper() {
         ModelMapper mapper = new ModelMapper();
 
+        // Job entity → JobDto: explicit mapping required because entity uses snake_case
+        // field names (job_type, created_at, etc.) while DTO uses camelCase (jobType, createdAt).
+        mapper.createTypeMap(Job.class, JobDto.class)
+                .setConverter(ctx -> {
+                    Job src = ctx.getSource();
+                    JobDto dto = new JobDto();
+                    dto.setId(src.getId());
+                    dto.setTitle(src.getTitle());
+                    dto.setDescription(src.getDescription());
+                    dto.setSalary(src.getSalary());
+                    dto.setLocation(src.getLocation());
+                    dto.setJobType(src.getJob_type());
+                    dto.setExperienceRequired(src.getExperience_required());
+                    dto.setLatitude(src.getLatitude());
+                    dto.setLongitude(src.getLongitude());
+                    dto.setCreatedAt(src.getCreated_at());
+                    if (src.getRequiredSkills() != null) {
+                        dto.setSkills(src.getRequiredSkills().stream()
+                                .map(s -> new SkillsDto(s.getId(), s.getName()))
+                                .collect(Collectors.toSet()));
+                    }
+                    if (src.getCreatedBy() != null) {
+                        User creator = src.getCreatedBy();
+                        dto.setCreatedBy(new CreatedByDto(
+                                creator.getId(),
+                                creator.getName(),
+                                creator.getLocation()));
+                    }
+                    return dto;
+                });
+
         mapper.createTypeMap(JobApplication.class, ApplicationDto.class)
                 .setConverter(ctx -> {
                     JobApplication src = ctx.getSource();
@@ -31,7 +62,7 @@ public class Mapper {
 
                     dto.setId(src.getId());
                     dto.setStatus(src.getStatus());
-                    dto.setApplied_at(src.getApplied_at());
+                    dto.setAppliedAt(src.getApplied_at());
                     dto.setCoverLetter(src.getCoverLetter());
 
                     // Map user — already eagerly loaded by EntityGraph.
@@ -58,30 +89,7 @@ public class Mapper {
                     // Map job — already eagerly loaded by EntityGraph.
                     Job job = src.getJob();
                     if (job != null) {
-                        JobDto jobDto = new JobDto();
-                        jobDto.setId(job.getId());
-                        jobDto.setTitle(job.getTitle());
-                        jobDto.setDescription(job.getDescription());
-                        jobDto.setSalary(job.getSalary());
-                        jobDto.setLocation(job.getLocation());
-                        jobDto.setJob_type(job.getJob_type());
-                        jobDto.setExperience_required(job.getExperience_required());
-                        jobDto.setLatitude(job.getLatitude());
-                        jobDto.setLongitude(job.getLongitude());
-                        jobDto.setCreated_at(job.getCreated_at());
-                        if (job.getRequiredSkills() != null) {
-                            jobDto.setRequiredSkills(job.getRequiredSkills().stream()
-                                    .map(s -> new SkillsDto(s.getId(), s.getName()))
-                                    .collect(Collectors.toSet()));
-                        }
-                        if (job.getCreatedBy() != null) {
-                            User creator = job.getCreatedBy();
-                            jobDto.setCreatedBy(new CreatedByDto(
-                                    creator.getId(),
-                                    creator.getName(),
-                                    creator.getLocation()));
-                        }
-                        dto.setJob(jobDto);
+                        dto.setJob(mapper.map(job, JobDto.class));
                     }
 
                     return dto;

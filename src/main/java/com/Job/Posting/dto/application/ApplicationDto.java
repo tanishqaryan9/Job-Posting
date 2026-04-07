@@ -20,8 +20,7 @@ public class ApplicationDto {
     private UserDto user;
     private StatusType status;
 
-    @JsonProperty("appliedAt")
-    private LocalDateTime applied_at;
+    private LocalDateTime appliedAt;
 
     private String coverLetter;
 
