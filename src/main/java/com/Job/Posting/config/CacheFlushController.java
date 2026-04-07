@@ -1,6 +1,7 @@
 package com.Job.Posting.config;
 
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,6 +15,7 @@ public class CacheFlushController {
     }
 
     @DeleteMapping("/cache/flush")
+    @PreAuthorize("hasRole('ADMIN')")
     public String flushCache() {
         connectionFactory.getConnection().serverCommands().flushAll();
         return "Cache flushed!";

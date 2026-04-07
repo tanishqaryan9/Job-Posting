@@ -30,17 +30,25 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins}")
     private List<String> allowedOrigins;
 
+    @Value("${swagger.security.permit-all:false}")
+    private boolean permitSwaggerPublicly;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/auth/**", "/public/**", "/actuator/health",
-                                "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
+                .authorizeHttpRequests(auth -> {
+                    // Always-public paths
+                    auth.requestMatchers("/auth/**", "/public/**", "/actuator/health").permitAll();
+
+                    if (permitSwaggerPublicly) {
+                        auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
+                    }
+
+                    auth.requestMatchers("/dev/**").hasRole("ADMIN");
+
+                    auth.anyRequest().authenticated();
+                })
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex

@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -18,62 +20,82 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class RateLimiterFilter extends OncePerRequestFilter {
 
-    private static final int MAX_REQUESTS = 30;
-    private static final Duration WINDOW = Duration.ofMinutes(1);
+    // Limits for unauthenticated login or signup paths
+    private static final int AUTH_MAX = 30;
+    private static final Duration AUTH_WINDOW = Duration.ofMinutes(1);
+
+    // Limits for every other endpoint authenticated
+    private static final int GLOBAL_MAX = 200;
+    private static final Duration GLOBAL_WINDOW = Duration.ofMinutes(1);
+
     private static final String KEY_PREFIX = "rate_limit:";
 
-    // Shared across all pods — counts are stored in Redis, not per-instance memory
     private final StringRedisTemplate redisTemplate;
 
     private static final String[] EXCLUDED_PATHS = {
-            "/public",
-            "/actuator",
-            "/v3/api-docs",
-            "/swagger-ui",
+            "/actuator/health",
+            "/actuator/info",
             "/api/monitoring"
     };
 
     @Override
-    public void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
-
-        String uri = request.getRequestURI();
-
-        //Only rate-limit auth endpoints
-        if (!uri.startsWith("/auth/login") && !uri.startsWith("/auth/signup")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String ip = request.getRemoteAddr();
-        String key = KEY_PREFIX + ip;
-
-        try {
-            Long count = redisTemplate.opsForValue().increment(key);
-            if (count != null && count == 1) {
-                //setting TTL on first request so the window resets automatically
-                redisTemplate.expire(key, WINDOW);
-            }
-            if (count != null && count > MAX_REQUESTS) {
-                log.warn("Rate limit exceeded for IP: {} on endpoint: {}", ip, uri);
-                response.setStatus(429);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"error\": \"Too many requests. Please try again later.\", \"statusCode\": 429}");
-                return;
-            }
-        } catch (Exception e) {
-            log.error("Rate limiter Redis error for IP {}: {}", ip, e.getMessage());
-        }
-
-        filterChain.doFilter(request, response);
-    }
-
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+    protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         for (String excluded : EXCLUDED_PATHS) {
             if (path.startsWith(excluded)) return true;
         }
         return false;
+    }
+
+    @Override
+    public void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException
+    {
+        String uri = request.getRequestURI();
+        boolean isAuthEndpoint = uri.startsWith("/auth/");
+
+        String bucketKey;
+        int maxRequests;
+        Duration window;
+
+        if (isAuthEndpoint) {
+            bucketKey   = KEY_PREFIX + "ip:" + request.getRemoteAddr();
+            maxRequests = AUTH_MAX;
+            window      = AUTH_WINDOW;
+        } else {
+            String principal = resolveUserId(request);
+            bucketKey   = KEY_PREFIX + "user:" + principal;
+            maxRequests = GLOBAL_MAX;
+            window      = GLOBAL_WINDOW;
+        }
+
+        try {
+            Long count = redisTemplate.opsForValue().increment(bucketKey);
+            if (count != null && count == 1) {
+                redisTemplate.expire(bucketKey, window);
+            }
+            if (count != null && count > maxRequests) {
+                log.warn("Rate limit exceeded — key={} uri={}", bucketKey, uri);
+                response.setStatus(429);
+                response.setContentType("application/json");
+                response.getWriter()
+                        .write("{\"error\": \"Too many requests. Please try again later.\", \"statusCode\": 429}");
+                return;
+            }
+        } catch (Exception e) {
+            log.error("Rate limiter Redis error for key={}: {}", bucketKey, e.getMessage());
+        }
+
+        chain.doFilter(request, response);
+    }
+
+    private String resolveUserId(HttpServletRequest request) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+                return auth.getName();
+            }
+        } catch (Exception ignored) {
+        }
+        return request.getRemoteAddr();
     }
 }
