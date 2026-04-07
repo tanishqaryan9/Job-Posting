@@ -32,6 +32,7 @@ public class Mapper {
                     dto.setId(src.getId());
                     dto.setStatus(src.getStatus());
                     dto.setApplied_at(src.getApplied_at());
+                    dto.setCoverLetter(src.getCoverLetter());
 
                     // Map user — already eagerly loaded by EntityGraph.
                     User user = src.getUser();

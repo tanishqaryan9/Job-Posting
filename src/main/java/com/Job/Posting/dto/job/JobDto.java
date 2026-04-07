@@ -1,14 +1,12 @@
 package com.Job.Posting.dto.job;
 
 import com.Job.Posting.dto.skills.SkillsDto;
-import com.Job.Posting.entity.User;
 import com.Job.Posting.entity.type.JobType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -24,11 +22,21 @@ public class JobDto {
     private String description;
     private Double salary;
     private String location;
+
+    @JsonProperty("jobType")
     private JobType job_type;
+
+    @JsonProperty("experienceRequired")
     private Integer experience_required;
+
     private CreatedByDto createdBy;
+
+    @JsonProperty("createdAt")
     private LocalDateTime created_at;
+
+    @JsonProperty("skills")
     private Set<SkillsDto> requiredSkills;
+
     private Double latitude;
     private Double longitude;
     private Double distanceKm;

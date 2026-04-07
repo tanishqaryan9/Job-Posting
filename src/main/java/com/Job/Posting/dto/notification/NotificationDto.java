@@ -1,5 +1,6 @@
 package com.Job.Posting.dto.notification;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -11,6 +12,9 @@ public class NotificationDto {
     private Long userId;
     private String title;
     private String body;
+
+    @JsonProperty("isRead")
     private boolean isRead;
+
     private LocalDateTime createdAt;
 }

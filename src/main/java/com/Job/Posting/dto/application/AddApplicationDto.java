@@ -20,4 +20,7 @@ public class AddApplicationDto {
 
     // Optional — used by PUT to update status only (applicant-facing)
     private StatusType status;
+
+    // Optional — cover letter text submitted by applicant
+    private String coverLetter;
 }

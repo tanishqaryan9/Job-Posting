@@ -85,6 +85,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         jobApplication.setJob(job);
         jobApplication.setUser(user);
         jobApplication.setStatus(StatusType.PENDING);
+        jobApplication.setCoverLetter(addApplicationDto.getCoverLetter());
         JobApplication saved = jobApplicationRepository.save(jobApplication);
 
         // Publish Spring domain event — @TransactionalEventListener publishes to Kafka after commit

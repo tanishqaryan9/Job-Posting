@@ -38,6 +38,9 @@ public class JobApplication {
     @Enumerated(EnumType.STRING)
     private StatusType status;
 
+    @Column(columnDefinition = "TEXT")
+    private String coverLetter;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime applied_at;

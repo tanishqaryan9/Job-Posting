@@ -159,7 +159,7 @@ class ApplicationServiceTest {
     @Test
     void createApplication_shouldSaveAndPublishEvent_whenValid() {
         loginAs(applicantAppUser);
-        AddApplicationDto dto = new AddApplicationDto(10L, 1L, StatusType.PENDING);
+        AddApplicationDto dto = new AddApplicationDto(10L, 1L, StatusType.PENDING, null);
 
         when(jobRepository.findById(10L)).thenReturn(Optional.of(job));
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
@@ -179,7 +179,7 @@ class ApplicationServiceTest {
     @Test
     void createApplication_shouldThrow_whenJobNotFound() {
         loginAs(applicantAppUser);
-        AddApplicationDto dto = new AddApplicationDto(999L, 1L, StatusType.PENDING);
+        AddApplicationDto dto = new AddApplicationDto(999L, 1L, StatusType.PENDING, null);
         when(jobRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> applicationService.createApplication(dto))
@@ -192,7 +192,7 @@ class ApplicationServiceTest {
     @Test
     void createApplication_shouldThrow_whenUserNotFound() {
         loginAs(applicantAppUser);
-        AddApplicationDto dto = new AddApplicationDto(10L, 999L, StatusType.PENDING);
+        AddApplicationDto dto = new AddApplicationDto(10L, 999L, StatusType.PENDING, null);
         when(jobRepository.findById(10L)).thenReturn(Optional.of(job));
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -206,7 +206,7 @@ class ApplicationServiceTest {
     @Test
     void createApplication_shouldThrow_whenDuplicateApplication() {
         loginAs(applicantAppUser);
-        AddApplicationDto dto = new AddApplicationDto(10L, 1L, StatusType.PENDING);
+        AddApplicationDto dto = new AddApplicationDto(10L, 1L, StatusType.PENDING, null);
         when(jobRepository.findById(10L)).thenReturn(Optional.of(job));
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(jobApplicationRepository.existsByJobIdAndUserId(10L, 1L)).thenReturn(true);
