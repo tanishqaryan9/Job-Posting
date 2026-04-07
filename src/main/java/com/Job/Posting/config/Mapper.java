@@ -27,33 +27,7 @@ public class Mapper {
         // Job entity → JobDto: explicit mapping required because entity uses snake_case
         // field names (job_type, created_at, etc.) while DTO uses camelCase (jobType, createdAt).
         mapper.createTypeMap(Job.class, JobDto.class)
-                .setConverter(ctx -> {
-                    Job src = ctx.getSource();
-                    JobDto dto = new JobDto();
-                    dto.setId(src.getId());
-                    dto.setTitle(src.getTitle());
-                    dto.setDescription(src.getDescription());
-                    dto.setSalary(src.getSalary());
-                    dto.setLocation(src.getLocation());
-                    dto.setJobType(src.getJob_type());
-                    dto.setExperienceRequired(src.getExperience_required());
-                    dto.setLatitude(src.getLatitude());
-                    dto.setLongitude(src.getLongitude());
-                    dto.setCreatedAt(src.getCreated_at());
-                    if (src.getRequiredSkills() != null) {
-                        dto.setSkills(src.getRequiredSkills().stream()
-                                .map(s -> new SkillsDto(s.getId(), s.getName()))
-                                .collect(Collectors.toSet()));
-                    }
-                    if (src.getCreatedBy() != null) {
-                        User creator = src.getCreatedBy();
-                        dto.setCreatedBy(new CreatedByDto(
-                                creator.getId(),
-                                creator.getName(),
-                                creator.getLocation()));
-                    }
-                    return dto;
-                });
+                .setConverter(ctx -> mapJobToDto(ctx.getSource()));
 
         mapper.createTypeMap(JobApplication.class, ApplicationDto.class)
                 .setConverter(ctx -> {
@@ -87,15 +61,41 @@ public class Mapper {
                     }
 
                     // Map job — already eagerly loaded by EntityGraph.
-                    Job job = src.getJob();
-                    if (job != null) {
-                        dto.setJob(mapper.map(job, JobDto.class));
+                    if (src.getJob() != null) {
+                        dto.setJob(mapJobToDto(src.getJob()));
                     }
 
                     return dto;
                 });
 
         return mapper;
+    }
+
+    private static JobDto mapJobToDto(Job src) {
+        JobDto dto = new JobDto();
+        dto.setId(src.getId());
+        dto.setTitle(src.getTitle());
+        dto.setDescription(src.getDescription());
+        dto.setSalary(src.getSalary());
+        dto.setLocation(src.getLocation());
+        dto.setJobType(src.getJob_type());
+        dto.setExperienceRequired(src.getExperience_required());
+        dto.setLatitude(src.getLatitude());
+        dto.setLongitude(src.getLongitude());
+        dto.setCreatedAt(src.getCreated_at());
+        if (src.getRequiredSkills() != null) {
+            dto.setSkills(src.getRequiredSkills().stream()
+                    .map(s -> new SkillsDto(s.getId(), s.getName()))
+                    .collect(Collectors.toSet()));
+        }
+        if (src.getCreatedBy() != null) {
+            User creator = src.getCreatedBy();
+            dto.setCreatedBy(new CreatedByDto(
+                    creator.getId(),
+                    creator.getName(),
+                    creator.getLocation()));
+        }
+        return dto;
     }
 
     @Bean
