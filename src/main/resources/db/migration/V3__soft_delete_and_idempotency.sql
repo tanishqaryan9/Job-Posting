@@ -9,8 +9,12 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
 ALTER TABLE job ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL;
 
 -- Idempotency: prevent duplicate job applications
-ALTER TABLE job_application
-    ADD CONSTRAINT uq_user_job_application UNIQUE (user_id, job_id);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_user_job_application') THEN
+        ALTER TABLE job_application ADD CONSTRAINT uq_user_job_application UNIQUE (user_id, job_id);
+    END IF;
+END $$;
 
 -- Index to speed up soft delete filter queries
 CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users(deleted_at);

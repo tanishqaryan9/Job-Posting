@@ -1,4 +1,4 @@
-CREATE TABLE otp_verification (
+CREATE TABLE IF NOT EXISTS otp_verification (
                                   id          BIGSERIAL PRIMARY KEY,
                                   app_user_id BIGINT       NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
                                   type        VARCHAR(10)  NOT NULL CHECK (type IN ('EMAIL', 'PHONE')),
@@ -9,5 +9,5 @@ CREATE TABLE otp_verification (
                                   created_at  TIMESTAMP             DEFAULT NOW()
 );
 
-CREATE INDEX idx_otp_user_type_value
+CREATE INDEX IF NOT EXISTS idx_otp_user_type_value
     ON otp_verification (app_user_id, type, value);
