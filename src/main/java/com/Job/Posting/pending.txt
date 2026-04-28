@@ -1,0 +1,4 @@
+2. API Versioning        ← 10 mins, very professional
+3. Application Limit     ← prevents duplicate applications
+6. Audit Fields          ← good practice
+7. Job Expiry            ← realistic feature
