@@ -27,7 +27,10 @@ public class JWTAuthFilter extends OncePerRequestFilter {
 
     // Paths that should skip JWT validation
     private static final String[] EXCLUDED_PATHS = {
-            "/auth",
+            "/auth/login",
+            "/auth/signup",
+            "/auth/refresh",
+            "/auth/otp/send", // Send can be public if username is provided
             "/public",
             "/v3/api-docs",
             "/swagger-ui",

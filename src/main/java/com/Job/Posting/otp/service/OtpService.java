@@ -35,6 +35,7 @@ public class OtpService {
     private final StringRedisTemplate redisTemplate;
     private final JavaMailSender mailSender;
     private final AppUserRepository appUserRepository;
+    private final com.Job.Posting.user.repository.UserRepository userRepository;
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -83,20 +84,26 @@ public class OtpService {
         redisTemplate.delete(key);
 
         // Mark account as verified
-        if (appUser != null) {
-            // Fetch fresh managed entity to ensure persistence
-            AppUser managedUser = appUserRepository.findById(appUser.getId())
-                    .orElseThrow(() -> new IllegalArgumentException("User not found during verification."));
+        if (appUser == null) {
+            log.error("[OTP] Verified code but could not resolve user. value={}", mask(value));
+            throw new IllegalArgumentException("User session lost. Please log in again and verify.");
+        }
 
-            if (managedUser.getUserProfile() != null) {
-                User profile = managedUser.getUserProfile();
-                profile.setIsVerified(true);
-                appUserRepository.save(managedUser);
-                log.info("[OTP] Account verified and persisted: appUserId={} profileId={} email={}", 
-                        managedUser.getId(), profile.getId(), mask(value));
-            } else {
-                log.warn("[OTP] User has no profile to verify: appUserId={}", managedUser.getId());
-            }
+        // Fetch fresh managed entity to ensure persistence
+        AppUser managedUser = appUserRepository.findById(appUser.getId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found during verification."));
+
+        if (managedUser.getUserProfile() != null) {
+            User profile = managedUser.getUserProfile();
+            profile.setIsVerified(true);
+            // Explicitly save the profile first
+            userRepository.save(profile);
+            // Then save and flush the app user
+            appUserRepository.saveAndFlush(managedUser);
+            log.info("[OTP] Account verified and persisted: appUserId={} profileId={} email={}", 
+                    managedUser.getId(), profile.getId(), mask(value));
+        } else {
+            log.warn("[OTP] User has no profile to verify: appUserId={}", managedUser.getId());
         }
     }
 
