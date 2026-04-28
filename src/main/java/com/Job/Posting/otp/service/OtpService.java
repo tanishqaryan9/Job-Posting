@@ -2,6 +2,7 @@ package com.Job.Posting.otp.service;
 
 import com.Job.Posting.auth.repository.AppUserRepository;
 import com.Job.Posting.entity.AppUser;
+import com.Job.Posting.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
