@@ -131,7 +131,8 @@ class ApplicationFlowIntegrationTest {
     @Test
     void applicant_canSubmitApplication_andItIsPersisted() throws Exception {
         String body = objectMapper.writeValueAsString(
-                Map.of("jobId", jobId, "userId", applicantProfileId));
+                Map.of("jobId", jobId));
+
 
         mockMvc.perform(post("/application")
                         .header("Authorization", bearer(applicantToken))
@@ -146,7 +147,8 @@ class ApplicationFlowIntegrationTest {
     @Test
     void applicant_cannotApplyTwice_toTheSameJob() throws Exception {
         String body = objectMapper.writeValueAsString(
-                Map.of("jobId", jobId, "userId", applicantProfileId));
+                Map.of("jobId", jobId));
+
 
         mockMvc.perform(post("/application")
                         .header("Authorization", bearer(applicantToken))
@@ -164,7 +166,8 @@ class ApplicationFlowIntegrationTest {
     @Test
     void applicant_cannotApplyOnBehalfOfAnotherUser() throws Exception {
         String body = objectMapper.writeValueAsString(
-                Map.of("jobId", jobId, "userId", employerProfileId));
+                Map.of("jobId", jobId));
+
 
         mockMvc.perform(post("/application")
                         .header("Authorization", bearer(applicantToken))
@@ -176,7 +179,8 @@ class ApplicationFlowIntegrationTest {
     @Test
     void employer_canUpdateApplicationStatus() throws Exception {
         String body = objectMapper.writeValueAsString(
-                Map.of("jobId", jobId, "userId", applicantProfileId));
+                Map.of("jobId", jobId));
+
 
         String createResponse = mockMvc.perform(post("/application")
                         .header("Authorization", bearer(applicantToken))
@@ -202,7 +206,8 @@ class ApplicationFlowIntegrationTest {
     @Test
     void applicant_cannotUpdateApplicationStatus() throws Exception {
         String body = objectMapper.writeValueAsString(
-                Map.of("jobId", jobId, "userId", applicantProfileId));
+                Map.of("jobId", jobId));
+
 
         String createResponse = mockMvc.perform(post("/application")
                         .header("Authorization", bearer(applicantToken))
@@ -224,7 +229,8 @@ class ApplicationFlowIntegrationTest {
     @Test
     void applicant_canDeleteOwnApplication() throws Exception {
         String body = objectMapper.writeValueAsString(
-                Map.of("jobId", jobId, "userId", applicantProfileId));
+                Map.of("jobId", jobId));
+
 
         String createResponse = mockMvc.perform(post("/application")
                         .header("Authorization", bearer(applicantToken))
@@ -245,7 +251,8 @@ class ApplicationFlowIntegrationTest {
     @Test
     void employer_cannotDeleteApplicantsApplication() throws Exception {
         String body = objectMapper.writeValueAsString(
-                Map.of("jobId", jobId, "userId", applicantProfileId));
+                Map.of("jobId", jobId));
+
 
         String createResponse = mockMvc.perform(post("/application")
                         .header("Authorization", bearer(applicantToken))

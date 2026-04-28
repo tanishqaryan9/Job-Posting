@@ -146,9 +146,10 @@ class JobServiceTest {
         requestDto.setLocation("Delhi");
         requestDto.setJob_type(JobType.FULL_TIME);
         requestDto.setExperience_required(2);
-        requestDto.setCreatedByUserId(1L);
+        requestDto.setExperience_required(2);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+
         when(jobRepository.save(any(Job.class))).thenReturn(job);
         when(modelMapper.map(job, JobDto.class)).thenReturn(jobDto);
 
@@ -159,18 +160,8 @@ class JobServiceTest {
         verify(jobRepository).save(any(Job.class));
     }
 
-    @Test
-    void addNewJob_shouldThrow_whenUserNotFound() {
-        AddJobRequestDto requestDto = new AddJobRequestDto();
-        requestDto.setCreatedByUserId(99L);
-        requestDto.setTitle("Test");
+    // addNewJob_shouldThrow_whenUserNotFound is no longer applicable as user comes from token
 
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> jobService.addNewJob(requestDto))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("99");
-    }
 
     @Test
     void addNewJob_shouldThrow_whenUserNotVerified() {
@@ -183,13 +174,15 @@ class JobServiceTest {
         requestDto.setLocation("Delhi");
         requestDto.setJob_type(JobType.FULL_TIME);
         requestDto.setExperience_required(2);
-        requestDto.setCreatedByUserId(1L);
+        requestDto.setExperience_required(2);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+
 
         assertThatThrownBy(() -> jobService.addNewJob(requestDto))
-                .isInstanceOf(com.Job.Posting.exception.AccessDeniedException.class)
+                .isInstanceOf(com.Job.Posting.exception.UserNotVerifiedException.class)
                 .hasMessageContaining("verify");
+
 
         verify(jobRepository, never()).save(any());
     }
@@ -223,7 +216,8 @@ class JobServiceTest {
     @Test
     void updateJob_shouldThrow_whenJobNotFound() {
         AddJobRequestDto requestDto = new AddJobRequestDto();
-        requestDto.setCreatedByUserId(1L);
+
+
 
         when(jobRepository.findById(99L)).thenReturn(Optional.empty());
 
@@ -241,10 +235,11 @@ class JobServiceTest {
         requestDto.setLocation("Mumbai");
         requestDto.setJob_type(JobType.PART_TIME);
         requestDto.setExperience_required(3);
-        requestDto.setCreatedByUserId(1L);
+
+
 
         when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
         when(jobRepository.save(any(Job.class))).thenReturn(job);
         when(modelMapper.map(job, JobDto.class)).thenReturn(jobDto);
 

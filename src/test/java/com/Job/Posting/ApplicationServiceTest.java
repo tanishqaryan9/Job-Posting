@@ -159,10 +159,11 @@ class ApplicationServiceTest {
     @Test
     void createApplication_shouldSaveAndPublishEvent_whenValid() {
         loginAs(applicantAppUser);
-        AddApplicationDto dto = new AddApplicationDto(10L, 1L, "resume.pdf", StatusType.PENDING);
+        AddApplicationDto dto = new AddApplicationDto(10L, "resume.pdf", StatusType.PENDING);
+
 
         when(jobRepository.findById(10L)).thenReturn(Optional.of(job));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
         when(jobApplicationRepository.existsByJobIdAndUserId(10L, 1L)).thenReturn(false);
         when(jobApplicationRepository.save(any(JobApplication.class))).thenReturn(jobApplication);
         when(modelMapper.map(jobApplication, ApplicationDto.class)).thenReturn(applicationDto);
@@ -179,7 +180,8 @@ class ApplicationServiceTest {
     @Test
     void createApplication_shouldThrow_whenJobNotFound() {
         loginAs(applicantAppUser);
-        AddApplicationDto dto = new AddApplicationDto(999L, 1L, "resume.pdf", StatusType.PENDING);
+        AddApplicationDto dto = new AddApplicationDto(999L, "resume.pdf", StatusType.PENDING);
+
         when(jobRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> applicationService.createApplication(dto))
@@ -194,37 +196,29 @@ class ApplicationServiceTest {
         user.setIsVerified(false);
         loginAs(applicantAppUser);
 
-        AddApplicationDto dto = new AddApplicationDto(10L, 1L, "resume.pdf", StatusType.PENDING);
+        AddApplicationDto dto = new AddApplicationDto(10L, "resume.pdf", StatusType.PENDING);
+
         when(jobRepository.findById(10L)).thenReturn(Optional.of(job));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
 
         assertThatThrownBy(() -> applicationService.createApplication(dto))
-                .isInstanceOf(com.Job.Posting.exception.AccessDeniedException.class)
+                .isInstanceOf(com.Job.Posting.exception.UserNotVerifiedException.class)
                 .hasMessageContaining("verify");
 
-        verify(jobApplicationRepository, never()).save(any());
-    }
-
-    @Test
-    void createApplication_shouldThrow_whenUserNotFound() {
-        loginAs(applicantAppUser);
-        AddApplicationDto dto = new AddApplicationDto(10L, 999L, "resume.pdf", StatusType.PENDING);
-        when(jobRepository.findById(10L)).thenReturn(Optional.of(job));
-        when(userRepository.findById(999L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> applicationService.createApplication(dto))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("999");
 
         verify(jobApplicationRepository, never()).save(any());
     }
+
+    // createApplication_shouldThrow_whenUserNotFound is no longer applicable as user comes from token
+
 
     @Test
     void createApplication_shouldThrow_whenDuplicateApplication() {
         loginAs(applicantAppUser);
-        AddApplicationDto dto = new AddApplicationDto(10L, 1L, "resume.pdf", StatusType.PENDING);
+        AddApplicationDto dto = new AddApplicationDto(10L, "resume.pdf", StatusType.PENDING);
+
         when(jobRepository.findById(10L)).thenReturn(Optional.of(job));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
         when(jobApplicationRepository.existsByJobIdAndUserId(10L, 1L)).thenReturn(true);
 
         assertThatThrownBy(() -> applicationService.createApplication(dto))
