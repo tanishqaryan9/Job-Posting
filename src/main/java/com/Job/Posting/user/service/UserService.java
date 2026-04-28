@@ -30,4 +30,6 @@ public interface UserService {
     void deleteSkillFromUser(Long userId, Long skillId);
 
     UserDto createOAuthProfile(Long appUserId, OAuthProfileRequestDto dto);
+    
+    UserDto getCurrentUserProfile();
 }

@@ -11,6 +11,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -52,7 +54,9 @@ public class OtpService {
         verifyOtp(type, value, otp, null);
     }
 
+    @Transactional
     public void verifyOtp(String type, String value, String otp, String username) {
+
         if (!"EMAIL".equalsIgnoreCase(type)) {
             throw new IllegalArgumentException("Only EMAIL OTP is supported.");
         }
@@ -78,12 +82,23 @@ public class OtpService {
         redisTemplate.delete(key);
 
         // Mark account as verified
-        if (appUser != null && appUser.getUserProfile() != null) {
-            appUser.getUserProfile().setIsVerified(true);
-            appUserRepository.save(appUser);
-            log.info("[OTP] Account verified: appUserId={} email={}", appUser.getId(), mask(value));
+        if (appUser != null) {
+            // Fetch fresh managed entity to ensure persistence
+            AppUser managedUser = appUserRepository.findById(appUser.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found during verification."));
+
+            if (managedUser.getUserProfile() != null) {
+                User profile = managedUser.getUserProfile();
+                profile.setIsVerified(true);
+                appUserRepository.save(managedUser);
+                log.info("[OTP] Account verified and persisted: appUserId={} profileId={} email={}", 
+                        managedUser.getId(), profile.getId(), mask(value));
+            } else {
+                log.warn("[OTP] User has no profile to verify: appUserId={}", managedUser.getId());
+            }
         }
     }
+
 
     private void validateEmailOwnership(AppUser appUser, String value) {
         String accountEmail = appUser.getUsername();

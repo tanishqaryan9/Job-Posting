@@ -26,6 +26,12 @@ public class UserController {
 
     private final UserService userService;
 
+    @GetMapping("/me")
+    public ResponseEntity<UserDto> getCurrentUser() {
+        return ResponseEntity.ok(userService.getCurrentUserProfile());
+    }
+
+
     @GetMapping
     public ResponseEntity<Page<UserDto>> getAllUsers(
             @RequestParam(defaultValue = "0")   @Min(0)   int page,

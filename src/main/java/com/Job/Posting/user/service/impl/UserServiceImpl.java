@@ -156,6 +156,20 @@ public class UserServiceImpl implements UserService {
         return modelMapper.map(saved, UserDto.class);
     }
 
+    @Override @Transactional
+    public UserDto getCurrentUserProfile() {
+        AppUser currentAppUser = getCurrentUser();
+        // Fetch managed entity to ensure we get the latest profile status from DB
+        AppUser appUser = appUserRepository.findById(currentAppUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Authenticated user not found in database"));
+        
+        if (appUser.getUserProfile() == null) {
+            throw new ResourceNotFoundException("User profile not found for current user");
+        }
+        
+        return modelMapper.map(appUser.getUserProfile(), UserDto.class);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private void requireOwnership(Long profileId) {
