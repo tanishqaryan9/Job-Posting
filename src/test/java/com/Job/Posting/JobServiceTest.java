@@ -57,6 +57,7 @@ class JobServiceTest {
         user.setNumber("1234567890");
         user.setLocation("Delhi");
         user.setExperience(2);
+        user.setIsVerified(true); // must be verified to post jobs
 
         job = new Job();
         job.setId(1L);
@@ -169,6 +170,28 @@ class JobServiceTest {
         assertThatThrownBy(() -> jobService.addNewJob(requestDto))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("99");
+    }
+
+    @Test
+    void addNewJob_shouldThrow_whenUserNotVerified() {
+        user.setIsVerified(false);
+
+        AddJobRequestDto requestDto = new AddJobRequestDto();
+        requestDto.setTitle("Backend Developer");
+        requestDto.setDescription("Spring Boot role");
+        requestDto.setSalary(80000.0);
+        requestDto.setLocation("Delhi");
+        requestDto.setJob_type(JobType.FULL_TIME);
+        requestDto.setExperience_required(2);
+        requestDto.setCreatedByUserId(1L);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> jobService.addNewJob(requestDto))
+                .isInstanceOf(com.Job.Posting.exception.AccessDeniedException.class)
+                .hasMessageContaining("verify");
+
+        verify(jobRepository, never()).save(any());
     }
 
     // ── deleteJob ─────────────────────────────────────────────────────────────

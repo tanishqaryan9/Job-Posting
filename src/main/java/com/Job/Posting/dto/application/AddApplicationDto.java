@@ -14,8 +14,6 @@ public class AddApplicationDto {
     @NotNull(message = "Job ID cannot be null")
     private Long jobId;
 
-    @NotNull(message = "User ID cannot be null")
-    private Long userId;
 
     private String coverLetter;
 

@@ -13,6 +13,7 @@ import com.Job.Posting.entity.type.StatusType;
 import com.Job.Posting.exception.AccessDeniedException;
 import com.Job.Posting.exception.DuplicateResourceException;
 import com.Job.Posting.exception.ResourceNotFoundException;
+import com.Job.Posting.exception.UserNotVerifiedException;
 import com.Job.Posting.job.repository.JobRepository;
 import com.Job.Posting.notification.service.NotificationService;
 import com.Job.Posting.user.repository.UserRepository;
@@ -87,16 +88,19 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Transactional
     @CacheEvict(cacheNames = "application", allEntries = true)
     public ApplicationDto createApplication(AddApplicationDto addApplicationDto) {
-        Job job = jobRepository.findById(addApplicationDto.getJobId())
-                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + addApplicationDto.getJobId()));
-        User user = userRepository.findById(addApplicationDto.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + addApplicationDto.getUserId()));
+        AppUser currentUser = getCurrentUser();
+        User user = currentUser.getUserProfile();
 
-        if (user.getIsVerified() == null || !user.getIsVerified()) {
-            throw new AccessDeniedException("You must verify your account before applying for a job");
+        if (user == null) {
+            throw new ResourceNotFoundException("User profile not found for authenticated user");
         }
 
-        requireProfileMatch(user.getId());
+        if (user.getIsVerified() == null || !user.getIsVerified()) {
+            throw new UserNotVerifiedException("You must verify your account before applying for a job");
+        }
+
+        Job job = jobRepository.findById(addApplicationDto.getJobId())
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + addApplicationDto.getJobId()));
 
         if (jobApplicationRepository.existsByJobIdAndUserId(job.getId(), user.getId())) {
             throw new DuplicateResourceException(

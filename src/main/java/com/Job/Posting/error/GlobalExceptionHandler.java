@@ -3,6 +3,8 @@ package com.Job.Posting.error;
 import com.Job.Posting.exception.AccessDeniedException;
 import com.Job.Posting.exception.DuplicateResourceException;
 import com.Job.Posting.exception.ResourceNotFoundException;
+import com.Job.Posting.exception.UserNotVerifiedException;
+
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.SignatureException;
@@ -50,6 +52,13 @@ public class GlobalExceptionHandler {
         APIError apiError = new APIError(ex.getMessage(), HttpStatus.FORBIDDEN);
         return new ResponseEntity<>(apiError, apiError.getStatusCode());
     }
+
+    @ExceptionHandler(UserNotVerifiedException.class)
+    public ResponseEntity<APIError> handleUserNotVerifiedException(UserNotVerifiedException ex) {
+        APIError apiError = new APIError(ex.getMessage(), HttpStatus.FORBIDDEN);
+        return new ResponseEntity<>(apiError, apiError.getStatusCode());
+    }
+
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<APIError> handleBadCredentials(BadCredentialsException ex) {

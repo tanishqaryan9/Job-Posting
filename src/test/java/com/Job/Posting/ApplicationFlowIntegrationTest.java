@@ -67,6 +67,7 @@ class ApplicationFlowIntegrationTest {
         applicantProfile.setNumber("9990000001");
         applicantProfile.setLocation("Delhi");
         applicantProfile.setExperience(2);
+        applicantProfile.setIsVerified(true); // required to apply for jobs
         applicantProfile = userRepository.save(applicantProfile);
         applicantProfileId = applicantProfile.getId();
 
@@ -83,6 +84,7 @@ class ApplicationFlowIntegrationTest {
         employerProfile.setNumber("9990000002");
         employerProfile.setLocation("Mumbai");
         employerProfile.setExperience(10);
+        employerProfile.setIsVerified(true); // required to post jobs
         employerProfile = userRepository.save(employerProfile);
         employerProfileId = employerProfile.getId();
 

@@ -32,6 +32,4 @@ public class AddJobRequestDto {
     private Double latitude;
     private Double longitude;
 
-    @NotNull(message = "User ID cannot be null")
-    private Long createdByUserId;
 }

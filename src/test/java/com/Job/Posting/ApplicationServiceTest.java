@@ -68,6 +68,7 @@ class ApplicationServiceTest {
         user = new User();
         user.setId(1L);
         user.setName("John Doe");
+        user.setIsVerified(true); // must be verified to apply for jobs
 
         job = new Job();
         job.setId(10L);
@@ -184,6 +185,22 @@ class ApplicationServiceTest {
         assertThatThrownBy(() -> applicationService.createApplication(dto))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("999");
+
+        verify(jobApplicationRepository, never()).save(any());
+    }
+
+    @Test
+    void createApplication_shouldThrow_whenUserNotVerified() {
+        user.setIsVerified(false);
+        loginAs(applicantAppUser);
+
+        AddApplicationDto dto = new AddApplicationDto(10L, 1L, "resume.pdf", StatusType.PENDING);
+        when(jobRepository.findById(10L)).thenReturn(Optional.of(job));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> applicationService.createApplication(dto))
+                .isInstanceOf(com.Job.Posting.exception.AccessDeniedException.class)
+                .hasMessageContaining("verify");
 
         verify(jobApplicationRepository, never()).save(any());
     }

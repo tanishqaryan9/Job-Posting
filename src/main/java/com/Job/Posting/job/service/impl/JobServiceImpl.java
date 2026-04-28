@@ -10,6 +10,7 @@ import com.Job.Posting.entity.User;
 import com.Job.Posting.entity.type.JobType;
 import com.Job.Posting.exception.AccessDeniedException;
 import com.Job.Posting.exception.ResourceNotFoundException;
+import com.Job.Posting.exception.UserNotVerifiedException;
 import com.Job.Posting.job.repository.JobRepository;
 import com.Job.Posting.job.service.JobService;
 import com.Job.Posting.skills.repository.SkillRepository;
@@ -72,11 +73,15 @@ public class JobServiceImpl implements JobService {
     @Transactional
     @CacheEvict(value = {"jobs", "feed"}, allEntries = true)
     public JobDto addNewJob(AddJobRequestDto addJobRequestDto) {
-        User user = userRepository.findById(addJobRequestDto.getCreatedByUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + addJobRequestDto.getCreatedByUserId()));
+        AppUser currentUser = getCurrentUser();
+        User user = currentUser.getUserProfile();
+
+        if (user == null) {
+            throw new ResourceNotFoundException("User profile not found for authenticated user");
+        }
 
         if (user.getIsVerified() == null || !user.getIsVerified()) {
-            throw new AccessDeniedException("You must verify your account before posting a job");
+            throw new UserNotVerifiedException("You must verify your account before posting a job");
         }
 
         Job job = new Job();
@@ -107,9 +112,6 @@ public class JobServiceImpl implements JobService {
                 .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
         requireJobOwnership(job);
 
-        User user = userRepository.findById(addJobRequestDto.getCreatedByUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + addJobRequestDto.getCreatedByUserId()));
-
         job.setTitle(addJobRequestDto.getTitle());
         job.setDescription(addJobRequestDto.getDescription());
         job.setSalary(addJobRequestDto.getSalary());
@@ -119,7 +121,6 @@ public class JobServiceImpl implements JobService {
         job.setExperience_required(addJobRequestDto.getExperience_required());
         job.setLatitude(addJobRequestDto.getLatitude());
         job.setLongitude(addJobRequestDto.getLongitude());
-        job.setCreatedBy(user);
 
         Job newJob = jobRepository.save(job);
         return modelMapper.map(newJob, JobDto.class);

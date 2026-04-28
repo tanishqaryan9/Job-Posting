@@ -11,7 +11,7 @@ public class OtpDtos {
     public static class SendOtpRequest {
 
         @NotBlank
-        @Pattern(regexp = "(?i)EMAIL|PHONE", message = "type must be EMAIL or PHONE")
+        @Pattern(regexp = "EMAIL", message = "type must be EMAIL")
         private String type;
 
         @NotBlank
@@ -24,7 +24,7 @@ public class OtpDtos {
     public static class VerifyOtpRequest {
 
         @NotBlank
-        @Pattern(regexp = "(?i)EMAIL|PHONE", message = "type must be EMAIL or PHONE")
+        @Pattern(regexp = "EMAIL", message = "type must be EMAIL")
         private String type;
 
         @NotBlank
