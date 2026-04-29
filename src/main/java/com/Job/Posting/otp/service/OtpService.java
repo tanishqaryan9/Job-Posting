@@ -127,41 +127,66 @@ public class OtpService {
         return otp;
     }
 
-    @org.springframework.scheduling.annotation.Async
+    /**
+     * Sends the OTP email synchronously on the calling thread.
+     *
+     * IMPORTANT: @Async cannot be placed on a private method — Spring's CGLIB proxy
+     * cannot override private methods, so the annotation is silently ignored.
+     * The method intentionally runs synchronously so that any SMTP failure
+     * propagates back to the caller as a real exception (and the API returns a
+     * proper error to the client instead of a silent 200 OK with an undelivered email).
+     *
+     * If async behaviour is ever needed, extract this into a separate Spring bean
+     * with a public method annotated @Async.
+     */
     private void sendEmailOtp(String email, String otp) {
+        // FIX: never fall back to a fake "noreply@jobhunt.com" domain — that From address
+        // mismatches the authenticated Gmail account and triggers spam filters.
+        // If mailFrom is not configured the application is mis-configured; fail fast.
+        if (mailFrom == null || mailFrom.isBlank()) {
+            log.error("[OTP] MAIL_USERNAME is not configured. Cannot send OTP email.");
+            throw new RuntimeException("Email service is not configured. Please contact support.");
+        }
+
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
-            
-            String from = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : "noreply@jobhunt.com";
-            helper.setFrom(from, "JobHunt Platform");
-            helper.setTo(email);
-            helper.setSubject("Your JobHunt Verification Code: " + otp);
-            
-            String htmlContent = """
-                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff;">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <h2 style="color: #3b82f6; margin: 0;">JobHunt Platform</h2>
-                        <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">Secure Verification</p>
-                    </div>
-                    <div style="padding: 30px; background-color: #f8fafc; border-radius: 8px; text-align: center;">
-                        <p style="font-size: 16px; color: #334155; margin-bottom: 20px;">Your verification code is:</p>
-                        <div style="font-size: 42px; font-weight: 700; letter-spacing: 5px; color: #1e293b; margin: 20px 0; font-family: monospace;">%s</div>
-                        <p style="font-size: 14px; color: #64748b; margin-top: 20px;">This code expires in <strong>%d minutes</strong>.</p>
-                    </div>
-                    <div style="margin-top: 30px; color: #94a3b8; font-size: 12px; text-align: center; line-height: 1.6;">
-                        <p>If you did not request this code, please ignore this email.</p>
-                        <p>&copy; 2026 JobHunt Platform. All rights reserved.</p>
-                    </div>
-                </div>
-                """.formatted(otp, otpExpiryMinutes);
+            // MimeMessageHelper(msg, multipart, charset) — must pass charset here
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
-            helper.setText(htmlContent, true);
-            
+            helper.setFrom(mailFrom);           // must exactly match the SMTP auth account
+            helper.setTo(email);
+            helper.setSubject("Your JobHunt Verification Code");
+
+            // Plain-text alternative — required for non-HTML clients and spam compliance
+            String plain = "Your JobHunt verification code is: " + otp
+                    + "\n\nThis code expires in " + otpExpiryMinutes + " minutes."
+                    + "\n\nIf you did not request this, please ignore this email.";
+
+            String html = """
+                    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:12px;background:#fff">
+                      <h2 style="margin:0 0 4px;color:#1e293b">JobHunt Platform</h2>
+                      <p style="margin:0 0 24px;color:#64748b;font-size:13px">Account verification</p>
+                      <div style="background:#f8fafc;border-radius:8px;padding:24px;text-align:center">
+                        <p style="margin:0 0 12px;color:#334155;font-size:15px">Your verification code</p>
+                        <div style="font-size:40px;font-weight:700;letter-spacing:8px;color:#1e293b;font-family:monospace">%s</div>
+                        <p style="margin:16px 0 0;color:#64748b;font-size:13px">Expires in <strong>%d minutes</strong></p>
+                      </div>
+                      <p style="margin:24px 0 0;color:#94a3b8;font-size:11px;text-align:center">If you did not request this code, please ignore this email.</p>
+                    </div>
+                    """.formatted(otp, otpExpiryMinutes);
+
+            // setText(html, plain, htmlCharset) — sets both HTML and plain-text parts
+            helper.setText(plain, html);
+
             mailSender.send(mimeMessage);
-            log.info("[OTP] Rich HTML Email OTP sent to {}", mask(email));
+            log.info("[OTP] Email OTP dispatched to {}", mask(email));
+
         } catch (Exception e) {
-            log.error("[OTP] Failed to send rich email OTP to {}: {}", mask(email), e.getMessage());
+            // FIX: Log the full exception (not just getMessage()) so the stack trace
+            // appears in the logs, then rethrow so the API returns a real error
+            // instead of a silent 200 OK when delivery fails.
+            log.error("[OTP] Failed to send OTP email to {}", mask(email), e);
+            throw new RuntimeException("Failed to send OTP email. Please try again.", e);
         }
     }
 

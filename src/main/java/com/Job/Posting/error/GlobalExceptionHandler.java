@@ -119,6 +119,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(apiError, apiError.getStatusCode());
     }
 
+    // RuntimeException — surfaces the real message (e.g. SMTP auth failure, OTP send failure)
+    // Must be declared BEFORE the generic Exception handler or Spring will never reach it.
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<APIError> handleRuntimeException(RuntimeException ex) {
+        log.error("Runtime error: {}", ex.getMessage(), ex);
+        String message = ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred. Please try again.";
+        APIError apiError = new APIError(message, HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(apiError, apiError.getStatusCode());
+    }
+
     // Fallback
     @ExceptionHandler(Exception.class)
     public ResponseEntity<APIError> handleGenericException(Exception ex) {
