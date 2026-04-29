@@ -7,7 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.mail.SimpleMailMessage;
+import jakarta.mail.internet.MimeMessage;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -126,24 +127,41 @@ public class OtpService {
         return otp;
     }
 
+    @org.springframework.scheduling.annotation.Async
     private void sendEmailOtp(String email, String otp) {
         try {
-            SimpleMailMessage msg = new SimpleMailMessage();
-            if (mailFrom != null && !mailFrom.isBlank()) {
-                msg.setFrom(mailFrom);
-            }
-            msg.setTo(email);
-            msg.setSubject("Your JobPosting Verification Code");
-            msg.setText(
-                    "Your verification code is: " + otp + "\n\n" +
-                            "This code expires in " + otpExpiryMinutes + " minutes.\n\n" +
-                            "If you did not request this, please ignore this email."
-            );
-            mailSender.send(msg);
-            log.info("[OTP] Email OTP sent to {}", mask(email));
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
+            
+            String from = (mailFrom != null && !mailFrom.isBlank()) ? mailFrom : "noreply@jobhunt.com";
+            helper.setFrom(from, "JobHunt Platform");
+            helper.setTo(email);
+            helper.setSubject("Your JobHunt Verification Code: " + otp);
+            
+            String htmlContent = """
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #ffffff;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h2 style="color: #3b82f6; margin: 0;">JobHunt Platform</h2>
+                        <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">Secure Verification</p>
+                    </div>
+                    <div style="padding: 30px; background-color: #f8fafc; border-radius: 8px; text-align: center;">
+                        <p style="font-size: 16px; color: #334155; margin-bottom: 20px;">Your verification code is:</p>
+                        <div style="font-size: 42px; font-weight: 700; letter-spacing: 5px; color: #1e293b; margin: 20px 0; font-family: monospace;">%s</div>
+                        <p style="font-size: 14px; color: #64748b; margin-top: 20px;">This code expires in <strong>%d minutes</strong>.</p>
+                    </div>
+                    <div style="margin-top: 30px; color: #94a3b8; font-size: 12px; text-align: center; line-height: 1.6;">
+                        <p>If you did not request this code, please ignore this email.</p>
+                        <p>&copy; 2026 JobHunt Platform. All rights reserved.</p>
+                    </div>
+                </div>
+                """.formatted(otp, otpExpiryMinutes);
+
+            helper.setText(htmlContent, true);
+            
+            mailSender.send(mimeMessage);
+            log.info("[OTP] Rich HTML Email OTP sent to {}", mask(email));
         } catch (Exception e) {
-            log.error("[OTP] Failed to send email OTP to {}: {}", mask(email), e.getMessage());
-            throw new RuntimeException("Failed to send verification email. Please check the email address or try again later.");
+            log.error("[OTP] Failed to send rich email OTP to {}: {}", mask(email), e.getMessage());
         }
     }
 
