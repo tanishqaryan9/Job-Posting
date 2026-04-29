@@ -49,7 +49,7 @@ public class AuthService {
 
         Long profileId = appUser.getUserProfile() != null ? appUser.getUserProfile().getId() : null;
 
-        return new LoginResponseDto(appUser.getId(), profileId, accessToken, refreshToken.getToken(), null);
+        return new LoginResponseDto(appUser.getId(), profileId, accessToken, refreshToken.getToken(), appUser.getUsername(), null);
     }
 
     public LoginResponseDto refresh(RefreshRequestDto refreshRequestDto) {
@@ -59,7 +59,7 @@ public class AuthService {
         String newAccessToken = authUtil.GenerateAccessToken(appUser);
         Long profileId = appUser.getUserProfile() != null ? appUser.getUserProfile().getId() : null;
 
-        return new LoginResponseDto(appUser.getId(), profileId, newAccessToken, newRefreshToken.getToken(), null);
+        return new LoginResponseDto(appUser.getId(), profileId, newAccessToken, newRefreshToken.getToken(), appUser.getUsername(), null);
     }
 
     @Transactional
@@ -160,6 +160,6 @@ public class AuthService {
         String oauthName = authUtil.determineDisplayNameFromOAuth2User(user, registrationID);
 
         return ResponseEntity.ok(new LoginResponseDto(
-                existingAppUser.getId(), profileId, accessToken, refreshToken.getToken(), oauthName));
+                existingAppUser.getId(), profileId, accessToken, refreshToken.getToken(), existingAppUser.getUsername(), oauthName));
     }
 }
