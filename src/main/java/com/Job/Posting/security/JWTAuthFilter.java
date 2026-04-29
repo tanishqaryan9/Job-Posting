@@ -25,37 +25,57 @@ public class JWTAuthFilter extends OncePerRequestFilter {
     private final AppUserRepository appUserRepository;
     private final HandlerExceptionResolver handlerExceptionResolver;
 
-    // Paths that should skip JWT validation
-    private static final String[] EXCLUDED_PATHS = {
+    // Paths that must be completely skipped — no JWT processing at all.
+    // These are fully public and must never return 401 due to a bad/expired token.
+    private static final String[] FULLY_EXCLUDED_PATHS = {
             "/auth/login",
             "/auth/signup",
             "/auth/refresh",
+            "/auth/logout",
             "/public",
             "/v3/api-docs",
             "/swagger-ui",
             "/api/monitoring"
     };
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    // Paths that are public (no auth required) but still benefit from having the
+    // security context populated when a VALID token is present — e.g. OTP send/verify
+    // can resolve the user from the JWT if available, but must NOT reject the request
+    // when the token is absent or expired.
+    private static final String[] OPTIONAL_AUTH_PATHS = {
+            "/auth/otp/send",
+            "/auth/otp/verify"
+    };
 
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
         try {
             String requestURI = request.getRequestURI();
-            log.info("Incoming Requests: {}", requestURI);
+            log.debug("Incoming request: {}", requestURI);
 
-            final String requestAuthToken = request.getHeader("Authorization");
-            if (requestAuthToken == null || !requestAuthToken.startsWith("Bearer ")) {
+            final String authHeader = request.getHeader("Authorization");
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            String token = requestAuthToken.split("Bearer ")[1];
-            String username = null;
+            String token = authHeader.substring(7);
+            boolean isOptionalAuthPath = isOptionalAuthPath(requestURI);
 
+            String username;
             try {
                 username = authUtil.getUsernameFromToken(token);
             } catch (Exception e) {
-                log.warn("Invalid or expired JWT token: {}", e.getMessage());
+                if (isOptionalAuthPath) {
+                    // Public endpoint: an expired/invalid token is silently ignored.
+                    // The OtpService will fall back to the username request param.
+                    log.debug("[JWT] Expired/invalid token on public path {} — proceeding without auth context", requestURI);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                // Protected endpoint: invalid token = 401.
+                log.warn("[JWT] Invalid or expired JWT token on {}: {}", requestURI, e.getMessage());
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 response.getWriter().write("{\"error\": \"Invalid or expired token\", \"statusCode\": 401}");
@@ -64,27 +84,23 @@ public class JWTAuthFilter extends OncePerRequestFilter {
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 AppUser user = appUserRepository.findByUsername(username);
-                if (user == null) {
-                    filterChain.doFilter(request, response);
-                    return;
+                if (user != null) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
 
             filterChain.doFilter(request, response);
-            return;
 
         } catch (Exception ex) {
             handlerExceptionResolver.resolveException(request, response, null, ex);
         }
     }
 
-    private boolean shouldExcludePath(String requestPath) {
-        for (String excludedPath : EXCLUDED_PATHS) {
-            if (requestPath.startsWith(excludedPath)) {
-                return true;
-            }
+    private boolean isOptionalAuthPath(String requestPath) {
+        for (String path : OPTIONAL_AUTH_PATHS) {
+            if (requestPath.startsWith(path)) return true;
         }
         return false;
     }
@@ -92,6 +108,9 @@ public class JWTAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
-        return shouldExcludePath(path);
+        for (String excluded : FULLY_EXCLUDED_PATHS) {
+            if (path.startsWith(excluded)) return true;
+        }
+        return false;
     }
 }
