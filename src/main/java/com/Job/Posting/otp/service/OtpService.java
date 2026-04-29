@@ -44,12 +44,23 @@ public class OtpService {
     }
 
     public void sendOtp(String type, String value, String username) {
-        if (!"EMAIL".equalsIgnoreCase(type)) {
+        String normalizedType = type != null ? type.trim().toUpperCase() : "";
+        if (!"EMAIL".equals(normalizedType)) {
             throw new IllegalArgumentException("Only EMAIL OTP is supported.");
         }
+        
+        String normalizedEmail = value != null ? value.trim().toLowerCase() : "";
+        if (normalizedEmail.isEmpty()) {
+            throw new IllegalArgumentException("Email address is required for OTP.");
+        }
+
         AppUser appUser = resolveUser(username);
-        String otp = generateAndStore(value, appUser != null ? appUser.getId() : null);
-        sendEmailOtp(value, otp);
+        String otp = generateAndStore(normalizedEmail, appUser != null ? appUser.getId() : null);
+        
+        log.info("[OTP] Sending {} OTP to {} (appUserId: {})", 
+                normalizedType, mask(normalizedEmail), appUser != null ? appUser.getId() : "GUEST");
+                
+        sendEmailOtp(normalizedEmail, otp);
     }
 
     public void verifyOtp(String type, String value, String otp) {
@@ -58,26 +69,25 @@ public class OtpService {
 
     @Transactional
     public void verifyOtp(String type, String value, String otp, String username) {
-
-        if (!"EMAIL".equalsIgnoreCase(type)) {
+        String normalizedType = type != null ? type.trim().toUpperCase() : "";
+        if (!"EMAIL".equals(normalizedType)) {
             throw new IllegalArgumentException("Only EMAIL OTP is supported.");
         }
 
+        String normalizedEmail = value != null ? value.trim().toLowerCase() : "";
         AppUser appUser = resolveUser(username);
-
-        // Security: confirm the email being verified belongs to this account
-        if (appUser != null) {
-            validateEmailOwnership(appUser, value);
-        }
-
-        String key = buildKey(value, appUser != null ? appUser.getId() : null);
+        String key = buildKey(normalizedEmail, appUser != null ? appUser.getId() : null);
+        
         String stored = redisTemplate.opsForValue().get(key);
-
+        
         if (stored == null) {
-            throw new IllegalArgumentException("OTP expired or not found. Please request a new one.");
+            log.warn("[OTP] Verification failed: No code found for key={}", key);
+            throw new IllegalArgumentException("OTP expired or not found. Please resend.");
         }
-        if (!stored.equals(otp.trim())) {
-            throw new IllegalArgumentException("Incorrect OTP. Please check and try again.");
+
+        if (!stored.equals(otp != null ? otp.trim() : "")) {
+            log.warn("[OTP] Verification failed: Code mismatch for email={}", mask(normalizedEmail));
+            throw new IllegalArgumentException("Invalid verification code.");
         }
 
         // Consume — one-time use only
@@ -104,17 +114,6 @@ public class OtpService {
                     managedUser.getId(), profile.getId(), mask(value));
         } else {
             log.warn("[OTP] User has no profile to verify: appUserId={}", managedUser.getId());
-        }
-    }
-
-
-    private void validateEmailOwnership(AppUser appUser, String value) {
-        String accountEmail = appUser.getUsername();
-        if (accountEmail == null || !accountEmail.equalsIgnoreCase(value.trim())) {
-            log.warn("[OTP] Ownership check failed: appUserId={} tried to verify email={} but account email={}",
-                    appUser.getId(), mask(value), mask(accountEmail));
-            throw new IllegalArgumentException(
-                    "The email address does not match your account. Please verify your own email.");
         }
     }
 
