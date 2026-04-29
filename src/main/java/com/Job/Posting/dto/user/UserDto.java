@@ -23,5 +23,6 @@ public class UserDto {
     private Double latitude;
     private Double longitude;
     private Boolean isVerified;
+    private String email;
     private LocalDateTime created_at;
 }
