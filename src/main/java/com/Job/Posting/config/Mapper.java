@@ -61,73 +61,9 @@ public class Mapper {
                         dto.setUser(userDto);
 
                         // Resolve email from AppUser.username (the login credential).
-                        // Use findByUserProfile so no extra join table is needed.
                         appUserRepository.findByUserProfile(user)
                                 .map(AppUser::getUsername)
                                 .ifPresent(dto::setApplicantEmail);
-                    }
-
-                    // Map job — already eagerly loaded by EntityGraph.
-                    Job job = src.getJob();
-                    if (job != null) {
-                        JobDto jobDto = new JobDto();
-                        jobDto.setId(job.getId());
-                        jobDto.setTitle(job.getTitle());
-                        jobDto.setDescription(job.getDescription());
-                        jobDto.setSalary(job.getSalary());
-                        jobDto.setSalaryPeriod(job.getSalaryPeriod());
-                        jobDto.setLocation(job.getLocation());
-                        jobDto.setJob_type(job.getJob_type());
-                        jobDto.setExperience_required(job.getExperience_required());
-                        jobDto.setLatitude(job.getLatitude());
-                        jobDto.setLongitude(job.getLongitude());
-                        jobDto.setCreated_at(job.getCreated_at());
-                        if (job.getRequiredSkills() != null) {
-                            jobDto.setRequiredSkills(job.getRequiredSkills().stream()
-                                    .map(s -> new SkillsDto(s.getId(), s.getName()))
-                                    .collect(Collectors.toSet()));
-                        }
-                        if (job.getCreatedBy() != null) {
-                            User creator = job.getCreatedBy();
-                            jobDto.setCreatedBy(new CreatedByDto(
-                                    creator.getId(),
-                                    creator.getName(),
-                                    creator.getLocation()));
-                        }
-                        dto.setJob(jobDto);
-                    }
-
-                    return dto;
-                });
-
-        return mapper;
-    }
-
-    @Bean
-    public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        return mapper;
-    }
-}
-                    if (user != null) {
-                        UserDto userDto = new UserDto();
-                        userDto.setId(user.getId());
-                        userDto.setName(user.getName());
-                        userDto.setNumber(user.getNumber());
-                        userDto.setLocation(user.getLocation());
-                        userDto.setExperience(user.getExperience());
-                        userDto.setProfile_photo(user.getProfile_photo());
-                        userDto.setLatitude(user.getLatitude());
-                        userDto.setLongitude(user.getLongitude());
-                        userDto.setCreated_at(user.getCreated_at());
-                        if (user.getSkills() != null) {
-                            userDto.setSkills(user.getSkills().stream()
-                                    .map(s -> new SkillsDto(s.getId(), s.getName()))
-                                    .collect(Collectors.toList()));
-                        }
-                        dto.setUser(userDto);
                     }
 
                     // Map job — already eagerly loaded by EntityGraph.
