@@ -3,7 +3,6 @@ package com.Job.Posting.otp.service;
 import com.Job.Posting.auth.repository.AppUserRepository;
 import com.Job.Posting.entity.AppUser;
 import com.Job.Posting.entity.User;
-import com.Job.Posting.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -35,7 +35,7 @@ public class OtpService {
     private final StringRedisTemplate redisTemplate;
     private final JavaMailSender mailSender;
     private final AppUserRepository appUserRepository;
-    private final UserRepository userRepository;
+    private final com.Job.Posting.user.repository.UserRepository userRepository;
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -58,11 +58,17 @@ public class OtpService {
 
     @Transactional
     public void verifyOtp(String type, String value, String otp, String username) {
+
         if (!"EMAIL".equalsIgnoreCase(type)) {
             throw new IllegalArgumentException("Only EMAIL OTP is supported.");
         }
 
         AppUser appUser = resolveUser(username);
+
+        // Security: confirm the email being verified belongs to this account
+        if (appUser != null) {
+            validateEmailOwnership(appUser, value);
+        }
 
         String key = buildKey(value, appUser != null ? appUser.getId() : null);
         String stored = redisTemplate.opsForValue().get(key);
@@ -74,34 +80,43 @@ public class OtpService {
             throw new IllegalArgumentException("Incorrect OTP. Please check and try again.");
         }
 
-        // One-time use — consume immediately
+        // Consume — one-time use only
         redisTemplate.delete(key);
 
+        // Mark account as verified
         if (appUser == null) {
-            log.warn("[OTP] OTP consumed but no user resolved for value={}", mask(value));
-            return;
+            log.error("[OTP] Verified code but could not resolve user. value={}", mask(value));
+            throw new IllegalArgumentException("User session lost. Please log in again and verify.");
         }
 
-        // Re-fetch managed entity to ensure JPA tracks changes
+        // Fetch fresh managed entity to ensure persistence
         AppUser managedUser = appUserRepository.findById(appUser.getId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found during verification."));
 
-        User profile = managedUser.getUserProfile();
-        if (profile == null) {
-            log.warn("[OTP] No profile found for appUserId={} — cannot mark verified", managedUser.getId());
-            throw new IllegalArgumentException("User profile not set up yet. Please complete your profile first.");
+        if (managedUser.getUserProfile() != null) {
+            User profile = managedUser.getUserProfile();
+            profile.setIsVerified(true);
+            // Explicitly save the profile first
+            userRepository.save(profile);
+            // Then save and flush the app user
+            appUserRepository.saveAndFlush(managedUser);
+            log.info("[OTP] Account verified and persisted: appUserId={} profileId={} email={}", 
+                    managedUser.getId(), profile.getId(), mask(value));
+        } else {
+            log.warn("[OTP] User has no profile to verify: appUserId={}", managedUser.getId());
         }
-
-        // Mark account as verified and store the verified email address
-        profile.setIsVerified(true);
-        profile.setEmail(value.trim().toLowerCase());
-        userRepository.save(profile);
-
-        log.info("[OTP] Account verified: appUserId={} profileId={} email={}",
-                managedUser.getId(), profile.getId(), mask(value));
     }
 
-    // ── Internals ─────────────────────────────────────────────────────────────
+
+    private void validateEmailOwnership(AppUser appUser, String value) {
+        String accountEmail = appUser.getUsername();
+        if (accountEmail == null || !accountEmail.equalsIgnoreCase(value.trim())) {
+            log.warn("[OTP] Ownership check failed: appUserId={} tried to verify email={} but account email={}",
+                    appUser.getId(), mask(value), mask(accountEmail));
+            throw new IllegalArgumentException(
+                    "The email address does not match your account. Please verify your own email.");
+        }
+    }
 
     private String generateAndStore(String value, Long appUserId) {
         int code = 100_000 + RANDOM.nextInt(900_000);
@@ -128,7 +143,7 @@ public class OtpService {
             mailSender.send(msg);
             log.info("[OTP] Email OTP sent to {}", mask(email));
         } catch (Exception e) {
-            log.error("[OTP] Failed to send email to {}: {}", mask(email), e.getMessage());
+            log.error("[OTP] Failed to send email OTP to {}: {}", mask(email), e.getMessage());
             throw new RuntimeException("Failed to send OTP email. Please try again.");
         }
     }
@@ -146,10 +161,11 @@ public class OtpService {
     }
 
     private String buildKey(String value, Long appUserId) {
-        String base = KEY_PREFIX + "email:" + value.trim().toLowerCase();
+        String base = KEY_PREFIX + "email:" + value.trim();
         return appUserId != null ? base + ":" + appUserId : base;
     }
 
+    /** Masks PII in logs — never log emails in full in production. */
     private String mask(String value) {
         if (value == null || value.length() < 4) return "***";
         if (value.contains("@")) {

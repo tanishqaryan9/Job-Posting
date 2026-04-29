@@ -58,4 +58,11 @@ public class ApplicationDto {
     public Integer getApplicantExperience() {
         return user != null ? user.getExperience() : null;
     }
+
+    // Email is stored on AppUser (username field) — populated by Mapper
+    private String applicantEmail;
+
+    @JsonProperty("applicantEmail")
+    public String getApplicantEmail() { return applicantEmail; }
+    public void setApplicantEmail(String applicantEmail) { this.applicantEmail = applicantEmail; }
 }

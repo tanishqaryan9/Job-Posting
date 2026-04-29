@@ -50,9 +50,6 @@ public class User {
     @Column(name = "is_verified", nullable = false)
     private Boolean isVerified = false;
 
-    @Column(name = "email", length = 255)
-    private String email;
-
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime created_at;
@@ -60,6 +57,7 @@ public class User {
     @UpdateTimestamp
     private LocalDateTime updated_at;
 
+    // Soft delete column — null means active, set means deleted
     private LocalDateTime deleted_at;
 
     @JsonIgnore
