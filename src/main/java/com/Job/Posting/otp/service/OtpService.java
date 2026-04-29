@@ -143,7 +143,7 @@ public class OtpService {
             log.info("[OTP] Email OTP sent to {}", mask(email));
         } catch (Exception e) {
             log.error("[OTP] Failed to send email OTP to {}: {}", mask(email), e.getMessage());
-            throw new RuntimeException("Failed to send OTP email. Please try again.");
+            throw new RuntimeException("Failed to send verification email. Please check the email address or try again later.");
         }
     }
 

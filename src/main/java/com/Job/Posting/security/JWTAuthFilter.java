@@ -30,7 +30,6 @@ public class JWTAuthFilter extends OncePerRequestFilter {
             "/auth/login",
             "/auth/signup",
             "/auth/refresh",
-            "/auth/otp/send", // Send can be public if username is provided
             "/public",
             "/v3/api-docs",
             "/swagger-ui",
