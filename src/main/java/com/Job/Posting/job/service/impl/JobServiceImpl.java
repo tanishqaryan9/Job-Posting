@@ -74,11 +74,14 @@ public class JobServiceImpl implements JobService {
     @CacheEvict(value = {"jobs", "feed"}, allEntries = true)
     public JobDto addNewJob(AddJobRequestDto addJobRequestDto) {
         AppUser currentUser = getCurrentUser();
-        User user = currentUser.getUserProfile();
+        User userProxy = currentUser.getUserProfile();
 
-        if (user == null) {
+        if (userProxy == null) {
             throw new ResourceNotFoundException("User profile not found for authenticated user");
         }
+        
+        User user = userRepository.findById(userProxy.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User profile not found"));
 
         if (user.getIsVerified() == null || !user.getIsVerified()) {
             throw new UserNotVerifiedException("You must verify your account before posting a job");
