@@ -130,8 +130,8 @@ public class CacheConfig {
             try {
                 return objectMapper.readValue(source, Object.class);
             } catch (Exception e) {
-                log.error("Failed to deserialize Redis value ({} bytes)", source.length, e);
-                throw new RuntimeException("Redis deserialization failed", e);
+                log.warn("Failed to deserialize Redis value ({} bytes). Treating as cache miss.", source.length, e);
+                return null;
             }
         }
     }
