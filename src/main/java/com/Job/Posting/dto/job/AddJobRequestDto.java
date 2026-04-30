@@ -2,9 +2,11 @@ package com.Job.Posting.dto.job;
 
 import com.Job.Posting.entity.type.JobType;
 import jakarta.validation.constraints.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AddJobRequestDto {
 
     @NotBlank(message = "Title cannot be blank")
