@@ -17,7 +17,7 @@ public class EmailService {
 
     @Async
     public void sendEmailOtpAsync(String mailFrom, String email, String otp, long otpExpiryMinutes) {
-        if (mailFrom == null || mailFrom.isBlank()) {
+        if (mailFrom == null || mailFrom.isBlank() || mailFrom.startsWith("${")) {
             log.error("[OTP] MAIL_USERNAME is not configured. Cannot send OTP email.");
             return;
         }
@@ -26,7 +26,8 @@ public class EmailService {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
-            helper.setFrom(mailFrom);
+            helper.setFrom(mailFrom, "JobHunt Security");
+            helper.setReplyTo(mailFrom, "JobHunt Support");
             helper.setTo(email);
             helper.setSubject("Your JobHunt Verification Code");
 
