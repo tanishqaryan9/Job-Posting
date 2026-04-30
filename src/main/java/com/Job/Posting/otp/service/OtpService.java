@@ -30,7 +30,7 @@ public class OtpService {
     @Value("${otp.expiry.minutes:10}")
     private long otpExpiryMinutes;
 
-    @Value("${spring.mail.username:}")
+    @Value("${MAIL_FROM:${spring.mail.username:}}")
     private String mailFrom;
 
     private final StringRedisTemplate redisTemplate;
