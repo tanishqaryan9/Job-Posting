@@ -25,6 +25,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -64,8 +66,14 @@ public class AuthService {
 
     @Transactional
     public SignupResponseDto signup(SignupRequestDto signupRequestDto) {
-        if (appUserRepository.findByUsername(signupRequestDto.getUsername()) != null) {
-            throw new IllegalArgumentException("Username already exists");
+        String username = signupRequestDto.getUsername();
+        if (username != null) {
+            username = username.toLowerCase().trim();
+            signupRequestDto.setUsername(username);
+        }
+
+        if (appUserRepository.findByUsername(username) != null) {
+            throw new DuplicateResourceException("This email is already registered. Please log in instead.");
         }
 
         if (userRepository.existsByNumber(signupRequestDto.getNumber())) {
@@ -161,5 +169,19 @@ public class AuthService {
 
         return ResponseEntity.ok(new LoginResponseDto(
                 existingAppUser.getId(), profileId, accessToken, refreshToken.getToken(), existingAppUser.getUsername(), oauthName));
+    }
+
+    public Map<String, Object> checkAvailability(String username, String phone) {
+        Map<String, Object> result = new java.util.HashMap<>();
+        if (username != null && !username.isBlank()) {
+            String normalized = username.toLowerCase().trim();
+            boolean taken = appUserRepository.findByUsername(normalized) != null;
+            result.put("usernameTaken", taken);
+        }
+        if (phone != null && !phone.isBlank()) {
+            boolean taken = userRepository.existsByNumber(phone.trim());
+            result.put("phoneTaken", taken);
+        }
+        return result;
     }
 }
