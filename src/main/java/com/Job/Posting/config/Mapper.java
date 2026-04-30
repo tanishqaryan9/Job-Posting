@@ -69,31 +69,35 @@ public class Mapper {
                     // Map job — already eagerly loaded by EntityGraph.
                     Job job = src.getJob();
                     if (job != null) {
-                        JobDto jobDto = new JobDto();
-                        jobDto.setId(job.getId());
-                        jobDto.setTitle(job.getTitle());
-                        jobDto.setDescription(job.getDescription());
-                        jobDto.setSalary(job.getSalary());
-                        jobDto.setSalaryPeriod(job.getSalaryPeriod());
-                        jobDto.setLocation(job.getLocation());
-                        jobDto.setJob_type(job.getJob_type());
-                        jobDto.setExperience_required(job.getExperience_required());
-                        jobDto.setLatitude(job.getLatitude());
-                        jobDto.setLongitude(job.getLongitude());
-                        jobDto.setCreated_at(job.getCreated_at());
-                        if (job.getRequiredSkills() != null) {
-                            jobDto.setRequiredSkills(job.getRequiredSkills().stream()
-                                    .map(s -> new SkillsDto(s.getId(), s.getName()))
-                                    .collect(Collectors.toSet()));
+                        try {
+                            JobDto jobDto = new JobDto();
+                            jobDto.setId(job.getId());
+                            jobDto.setTitle(job.getTitle());
+                            jobDto.setDescription(job.getDescription());
+                            jobDto.setSalary(job.getSalary());
+                            jobDto.setSalaryPeriod(job.getSalaryPeriod());
+                            jobDto.setLocation(job.getLocation());
+                            jobDto.setJob_type(job.getJob_type());
+                            jobDto.setExperience_required(job.getExperience_required());
+                            jobDto.setLatitude(job.getLatitude());
+                            jobDto.setLongitude(job.getLongitude());
+                            jobDto.setCreated_at(job.getCreated_at());
+                            if (job.getRequiredSkills() != null) {
+                                jobDto.setRequiredSkills(job.getRequiredSkills().stream()
+                                        .map(s -> new SkillsDto(s.getId(), s.getName()))
+                                        .collect(Collectors.toSet()));
+                            }
+                            if (job.getCreatedBy() != null) {
+                                User creator = job.getCreatedBy();
+                                jobDto.setCreatedBy(new CreatedByDto(
+                                        creator.getId(),
+                                        creator.getName(),
+                                        creator.getLocation()));
+                            }
+                            dto.setJob(jobDto);
+                        } catch (jakarta.persistence.EntityNotFoundException e) {
+                            dto.setJob(null);
                         }
-                        if (job.getCreatedBy() != null) {
-                            User creator = job.getCreatedBy();
-                            jobDto.setCreatedBy(new CreatedByDto(
-                                    creator.getId(),
-                                    creator.getName(),
-                                    creator.getLocation()));
-                        }
-                        dto.setJob(jobDto);
                     }
 
                     return dto;
