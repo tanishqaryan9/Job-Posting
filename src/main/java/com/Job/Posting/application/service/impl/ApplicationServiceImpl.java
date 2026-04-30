@@ -89,11 +89,14 @@ public class ApplicationServiceImpl implements ApplicationService {
     @CacheEvict(cacheNames = "application", allEntries = true)
     public ApplicationDto createApplication(AddApplicationDto addApplicationDto) {
         AppUser currentUser = getCurrentUser();
-        User user = currentUser.getUserProfile();
+        User proxyUser = currentUser.getUserProfile();
 
-        if (user == null) {
+        if (proxyUser == null) {
             throw new ResourceNotFoundException("User profile not found for authenticated user");
         }
+
+        User user = userRepository.findById(proxyUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User profile not found"));
 
         if (user.getIsVerified() == null || !user.getIsVerified()) {
             throw new UserNotVerifiedException("You must verify your account before applying for a job");
