@@ -77,8 +77,8 @@ public class UserServiceImpl implements UserService {
         requireOwnership(id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
-        user.setDeleted_at(LocalDateTime.now());
-        userRepository.save(user);
+        
+        appUserRepository.findByUserProfile(user).ifPresent(appUserRepository::delete);
     }
 
     @Override @Transactional
