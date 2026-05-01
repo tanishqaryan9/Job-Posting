@@ -82,4 +82,8 @@ public interface JobRepository extends JpaRepository<Job, Long> {
             @Param("minLon") double minLon, @Param("maxLon") double maxLon,
             @Param("skills") Set<Skills> skills, @Param("skillsEmpty") boolean skillsEmpty,
             @Param("excludeUserId") Long excludeUserId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("delete from Job j where j.createdBy.id = :userId")
+    void deleteByCreatedById(@Param("userId") Long userId);
 }

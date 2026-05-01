@@ -34,6 +34,7 @@ public class UserServiceImpl implements UserService {
     private final SkillRepository skillRepository;
     private final AppUserRepository appUserRepository;
     private final ModelMapper modelMapper;
+    private final com.Job.Posting.job.repository.JobRepository jobRepository;
 
     @Override @Transactional
     public Page<UserDto> getAllUsers(int page, int size) {
@@ -83,7 +84,7 @@ public class UserServiceImpl implements UserService {
         requireOwnership(id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
-        
+        jobRepository.deleteByCreatedById(id);
         appUserRepository.findByUserProfile(user).ifPresent(appUserRepository::delete);
     }
 
@@ -91,6 +92,7 @@ public class UserServiceImpl implements UserService {
     public void deleteUserAsAdmin(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        jobRepository.deleteByCreatedById(id);
         appUserRepository.findByUserProfile(user).ifPresent(appUserRepository::delete);
     }
 

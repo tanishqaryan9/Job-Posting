@@ -54,6 +54,8 @@ public class SkillServiceImpl implements SkillService {
         {
             throw new ResourceNotFoundException("Skills not found with id: "+id);
         }
+        skillRepository.deleteUserSkillsBySkillId(id);
+        skillRepository.deleteJobSkillsBySkillId(id);
         skillRepository.deleteById(id);
     }
 
