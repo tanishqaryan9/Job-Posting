@@ -183,6 +183,9 @@ public class UserServiceImpl implements UserService {
 
     private void requireOwnership(Long profileId) {
         AppUser cur = getCurrentUser();
+        if ("ROLE_ADMIN".equals(cur.getRole())) {
+            return;
+        }
         Long curProfileId = cur.getUserProfile() != null
                 ? cur.getUserProfile().getId() : null;
         if (curProfileId == null || !curProfileId.equals(profileId)) {

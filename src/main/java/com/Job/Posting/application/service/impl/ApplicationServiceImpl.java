@@ -187,8 +187,9 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     // ── Helpers ──────────────────────────────────────────────────────────────────
     private void requireProfileMatch(Long expectedProfileId) {
-        AppUser currentUser = getCurrentUser();
-        Long currentProfileId = currentUser.getUserProfile() != null
+        AppUser currentUser = getCurrentUser();        if ("ROLE_ADMIN".equals(currentUser.getRole())) {
+            return;
+        }        Long currentProfileId = currentUser.getUserProfile() != null
                 ? currentUser.getUserProfile().getId() : null;
 
         if (currentProfileId == null || !currentProfileId.equals(expectedProfileId)) {
