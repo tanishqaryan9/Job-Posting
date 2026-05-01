@@ -38,14 +38,20 @@ public class UserServiceImpl implements UserService {
     @Override @Transactional
     public Page<UserDto> getAllUsers(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return userRepository.findAll(pageable).map(u -> modelMapper.map(u, UserDto.class));
+        return userRepository.findAll(pageable).map(u -> {
+            UserDto dto = modelMapper.map(u, UserDto.class);
+            appUserRepository.findByUserProfile(u).ifPresent(appUser -> dto.setRole(appUser.getRole()));
+            return dto;
+        });
     }
 
     @Override @Transactional
     public UserDto getUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
-        return modelMapper.map(user, UserDto.class);
+        UserDto dto = modelMapper.map(user, UserDto.class);
+        appUserRepository.findByUserProfile(user).ifPresent(appUser -> dto.setRole(appUser.getRole()));
+        return dto;
     }
 
     @Override @Transactional
