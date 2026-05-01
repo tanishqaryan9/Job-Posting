@@ -20,4 +20,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findById(@NonNull Long id);
 
     boolean existsByNumber(String number);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query(value = "DELETE FROM user_skills WHERE user_id = :userId", nativeQuery = true)
+    void deleteUserSkillsByUserId(@org.springframework.data.repository.query.Param("userId") Long userId);
 }

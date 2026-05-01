@@ -98,8 +98,11 @@ public class OtpService {
 
         // Mark account as verified
         if (appUser == null) {
-            log.error("[OTP] Verified code but could not resolve user. value={}", mask(value));
-            throw new IllegalArgumentException("User session lost. Please log in again and verify.");
+            // User not yet created (e.g. during signup flow)
+            // Store verification success in Redis for AuthService to use
+            redisTemplate.opsForValue().set("otp:verified:" + normalizedEmail, "true", Duration.ofMinutes(15));
+            log.info("[OTP] Pre-verified email for signup: {}", mask(value));
+            return;
         }
 
         // Fetch fresh managed entity to ensure persistence

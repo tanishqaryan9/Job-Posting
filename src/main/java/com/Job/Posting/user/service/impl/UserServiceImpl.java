@@ -10,6 +10,7 @@ import com.Job.Posting.entity.Skills;
 import com.Job.Posting.entity.User;
 import com.Job.Posting.exception.AccessDeniedException;
 import com.Job.Posting.exception.ResourceNotFoundException;
+import com.Job.Posting.application.repository.JobApplicationRepository;
 import com.Job.Posting.skills.repository.SkillRepository;
 import com.Job.Posting.user.repository.UserRepository;
 import com.Job.Posting.user.service.UserService;
@@ -33,8 +34,10 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final SkillRepository skillRepository;
     private final AppUserRepository appUserRepository;
+    private final JobApplicationRepository jobApplicationRepository;
     private final ModelMapper modelMapper;
     private final com.Job.Posting.job.repository.JobRepository jobRepository;
+    private final com.Job.Posting.refresh.repository.RefreshTokenRepository refreshTokenRepository;
 
     @Override @Transactional
     public Page<UserDto> getAllUsers(int page, int size) {
@@ -82,18 +85,27 @@ public class UserServiceImpl implements UserService {
     @Override @Transactional
     public void deleteUser(Long id) {
         requireOwnership(id);
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
-        jobRepository.deleteByCreatedById(id);
-        appUserRepository.findByUserProfile(user).ifPresent(appUserRepository::delete);
+        deleteUserCascade(id);
     }
 
     @Override @Transactional
     public void deleteUserAsAdmin(Long id) {
+        deleteUserCascade(id);
+    }
+
+    private void deleteUserCascade(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+
+        userRepository.deleteUserSkillsByUserId(id);
+        jobApplicationRepository.deleteByUserId(id);
+        jobApplicationRepository.deleteByJobCreatorId(id);
         jobRepository.deleteByCreatedById(id);
-        appUserRepository.findByUserProfile(user).ifPresent(appUserRepository::delete);
+
+        appUserRepository.findByUserProfile(user).ifPresent(appUser -> {
+            refreshTokenRepository.deleteAllByAppUser(appUser);
+            appUserRepository.delete(appUser);
+        });
     }
 
     @Override @Transactional

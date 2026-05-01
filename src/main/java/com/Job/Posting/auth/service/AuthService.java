@@ -24,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.Map;
 
@@ -38,6 +39,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final StringRedisTemplate redisTemplate;
 
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
         Authentication authorization = authenticationManager.authenticate(
@@ -87,6 +89,13 @@ public class AuthService {
         userProfile.setExperience(signupRequestDto.getExperience());
         userProfile.setLatitude(signupRequestDto.getLatitude());
         userProfile.setLongitude(signupRequestDto.getLongitude());
+
+        String verifyKey = "otp:verified:" + signupRequestDto.getUsername().toLowerCase().trim();
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(verifyKey))) {
+            userProfile.setIsVerified(true);
+            redisTemplate.delete(verifyKey);
+        }
+
         User savedProfile = userRepository.save(userProfile);
 
         AppUser appUser = AppUser.builder()

@@ -31,4 +31,12 @@ public interface JobApplicationRepository extends JpaRepository<JobApplication, 
     @EntityGraph(attributePaths = {"job", "job.createdBy", "job.requiredSkills", "user", "user.skills"})
     @Query("select ja from JobApplication ja where ja.id in :ids")
     List<JobApplication> findAllByIds(@Param("ids") List<Long> ids);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("delete from JobApplication ja where ja.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("delete from JobApplication ja where ja.job.createdBy.id = :userId")
+    void deleteByJobCreatorId(@Param("userId") Long userId);
 }

@@ -60,6 +60,9 @@ public class User {
     // Soft delete column — null means active, set means deleted
     private LocalDateTime deleted_at;
 
+    @OneToOne(mappedBy = "userProfile", cascade = CascadeType.ALL, orphanRemoval = true)
+    private AppUser appUser;
+
     @JsonIgnore
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Job> job = new ArrayList<>();
