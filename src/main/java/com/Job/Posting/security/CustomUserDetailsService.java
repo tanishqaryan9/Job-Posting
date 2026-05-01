@@ -1,6 +1,7 @@
 package com.Job.Posting.security;
 
 import com.Job.Posting.auth.repository.AppUserRepository;
+import com.Job.Posting.entity.AppUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
