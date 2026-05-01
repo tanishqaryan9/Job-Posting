@@ -36,6 +36,7 @@ public class OtpVerification {
     private LocalDateTime expiresAt;
 
     @Column(nullable = false)
+    @Builder.Default
     private boolean verified = false;
 
     @CreationTimestamp
