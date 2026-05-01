@@ -49,6 +49,16 @@ public class SkillServiceImpl implements SkillService {
 
     @Override
     @Transactional
+    public void deleteSkillAsAdmin(Long id) {
+        if(!skillRepository.existsById(id))
+        {
+            throw new ResourceNotFoundException("Skills not found with id: "+id);
+        }
+        skillRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
     public SkillsDto addSkill(AddSkillDto dto) {
         if(skillRepository.existsByNameIgnoreCase(dto.getName()))
         {

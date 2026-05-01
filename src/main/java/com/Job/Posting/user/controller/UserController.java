@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,6 +38,21 @@ public class UserController {
             @RequestParam(defaultValue = "0")   @Min(0)   int page,
             @RequestParam(defaultValue = "10")  @Min(1) @Max(100) int size) {
         return ResponseEntity.ok(userService.getAllUsers(page, size));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin")
+    public ResponseEntity<Page<UserDto>> getAdminUsers(
+            @RequestParam(defaultValue = "0")   @Min(0)   int page,
+            @RequestParam(defaultValue = "20")  @Min(1) @Max(100) int size) {
+        return ResponseEntity.ok(userService.getAllUsers(page, size));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/admin/{id}")
+    public ResponseEntity<Void> deleteUserAsAdmin(@PathVariable Long id) {
+        userService.deleteUserAsAdmin(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")

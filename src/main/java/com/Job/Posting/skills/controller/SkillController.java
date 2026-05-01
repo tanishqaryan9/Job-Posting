@@ -29,6 +29,13 @@ public class SkillController {
         return ResponseEntity.ok(skillService.getSkillsById(id));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/admin/{id}")
+    public ResponseEntity<Void> deleteSkillAsAdmin(@PathVariable Long id) {
+        skillService.deleteSkillAsAdmin(id);
+        return ResponseEntity.noContent().build();
+    }
+
     //Write endpoints — ADMIN only
 
     @PostMapping

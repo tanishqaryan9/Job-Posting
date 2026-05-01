@@ -23,6 +23,8 @@ public interface UserService {
 
     void deleteUser(Long id);
 
+    void deleteUserAsAdmin(Long id);
+
     List<SkillsDto> getUserSkills(Long id);
 
     UserDto addSkillToUser(Long userId, Long skillId);

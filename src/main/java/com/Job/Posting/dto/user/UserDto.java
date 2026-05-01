@@ -17,6 +17,7 @@ public class UserDto {
     private String name;
     private String number;
     private String location;
+    private String role;
     private List<SkillsDto> skills;
     private Integer experience;
     private String profile_photo;

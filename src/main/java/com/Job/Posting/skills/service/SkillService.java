@@ -13,5 +13,7 @@ public interface SkillService {
 
     void deleteSkill(Long id);
 
+    void deleteSkillAsAdmin(Long id);
+
     SkillsDto addSkill(AddSkillDto dto);
 }

@@ -82,6 +82,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override @Transactional
+    public void deleteUserAsAdmin(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        appUserRepository.findByUserProfile(user).ifPresent(appUserRepository::delete);
+    }
+
+    @Override @Transactional
     public List<SkillsDto> getUserSkills(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
@@ -167,7 +174,9 @@ public class UserServiceImpl implements UserService {
             throw new ResourceNotFoundException("User profile not found for current user");
         }
         
-        return modelMapper.map(appUser.getUserProfile(), UserDto.class);
+        UserDto dto = modelMapper.map(appUser.getUserProfile(), UserDto.class);
+        dto.setRole(appUser.getRole());
+        return dto;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
