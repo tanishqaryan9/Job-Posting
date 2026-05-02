@@ -77,4 +77,10 @@ public class AuthController {
                 "message", req.getType() + " verified successfully"
         ));
     }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody @Valid com.Job.Posting.dto.security.ResetPasswordDto req) {
+        authService.resetPassword(req);
+        return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
+    }
 }

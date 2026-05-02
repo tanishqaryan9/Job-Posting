@@ -46,8 +46,8 @@ public class OtpService {
 
     public void sendOtp(String type, String value, String username) {
         String normalizedType = type != null ? type.trim().toUpperCase() : "";
-        if (!"EMAIL".equals(normalizedType)) {
-            throw new IllegalArgumentException("Only EMAIL OTP is supported.");
+        if (!"EMAIL".equals(normalizedType) && !"FORGOT_PASSWORD".equals(normalizedType)) {
+            throw new IllegalArgumentException("Unsupported OTP type.");
         }
         
         String normalizedEmail = value != null ? value.trim().toLowerCase() : "";
@@ -73,8 +73,8 @@ public class OtpService {
     @Transactional
     public void verifyOtp(String type, String value, String otp, String username) {
         String normalizedType = type != null ? type.trim().toUpperCase() : "";
-        if (!"EMAIL".equals(normalizedType)) {
-            throw new IllegalArgumentException("Only EMAIL OTP is supported.");
+        if (!"EMAIL".equals(normalizedType) && !"FORGOT_PASSWORD".equals(normalizedType)) {
+            throw new IllegalArgumentException("Unsupported OTP type.");
         }
 
         String normalizedEmail = value != null ? value.trim().toLowerCase() : "";

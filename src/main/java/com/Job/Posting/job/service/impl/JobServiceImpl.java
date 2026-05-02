@@ -226,6 +226,9 @@ public class JobServiceImpl implements JobService {
 
     private void requireJobOwnership(Job job) {
         AppUser currentUser = getCurrentUser();
+        if ("ROLE_ADMIN".equals(currentUser.getRole())) {
+            return;
+        }
         Long currentProfileId = currentUser.getUserProfile() != null
                 ? currentUser.getUserProfile().getId() : null;
         Long creatorId = job.getCreatedBy() != null ? job.getCreatedBy().getId() : null;

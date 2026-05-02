@@ -193,4 +193,22 @@ public class AuthService {
         }
         return result;
     }
+
+    @Transactional
+    public void resetPassword(com.Job.Posting.dto.security.ResetPasswordDto req) {
+        String normalizedEmail = req.getEmail().toLowerCase().trim();
+        String verifyKey = "otp:verified:" + normalizedEmail;
+        
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(verifyKey))) {
+            AppUser appUser = appUserRepository.findByUsername(normalizedEmail);
+            if (appUser == null) {
+                throw new com.Job.Posting.exception.ResourceNotFoundException("User not found");
+            }
+            appUser.setPassword(passwordEncoder.encode(req.getNewPassword()));
+            appUserRepository.save(appUser);
+            redisTemplate.delete(verifyKey);
+        } else {
+            throw new IllegalArgumentException("OTP not verified or expired. Please verify OTP first.");
+        }
+    }
 }

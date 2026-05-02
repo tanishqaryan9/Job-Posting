@@ -86,4 +86,8 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     @org.springframework.data.jpa.repository.Modifying
     @Query("delete from Job j where j.createdBy.id = :userId")
     void deleteByCreatedById(@Param("userId") Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = "delete from job_skills where job_id in (select id from job where user_id = :userId)", nativeQuery = true)
+    void deleteJobSkillsByJobCreatorId(@Param("userId") Long userId);
 }

@@ -25,4 +25,6 @@ public class UserDto {
     private Double longitude;
     private Boolean isVerified;
     private LocalDateTime created_at;
+    private String email;
+    private String password;
 }

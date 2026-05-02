@@ -17,4 +17,8 @@ public interface OtpVerificationRepository extends JpaRepository<OtpVerification
     @Transactional
     @Query("DELETE FROM OtpVerification o WHERE o.appUser.id = :appUserId AND o.type = :type AND o.value = :value")
     void deleteAllByAppUserIdAndTypeAndValue(Long appUserId, String type, String value);
+
+    @Modifying
+    @Transactional
+    void deleteAllByAppUser(com.Job.Posting.entity.AppUser appUser);
 }

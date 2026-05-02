@@ -24,4 +24,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query(value = "DELETE FROM user_skills WHERE user_id = :userId", nativeQuery = true)
     void deleteUserSkillsByUserId(@org.springframework.data.repository.query.Param("userId") Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query(value = "DELETE FROM users WHERE id = :id", nativeQuery = true)
+    void forceDeleteUser(@org.springframework.data.repository.query.Param("id") Long id);
 }

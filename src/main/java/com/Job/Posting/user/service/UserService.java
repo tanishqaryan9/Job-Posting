@@ -25,6 +25,8 @@ public interface UserService {
 
     void deleteUserAsAdmin(Long id);
 
+    void updateUserPasswordAsAdmin(Long id, String newPassword);
+
     List<SkillsDto> getUserSkills(Long id);
 
     UserDto addSkillToUser(Long userId, Long skillId);

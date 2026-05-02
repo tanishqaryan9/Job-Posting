@@ -17,4 +17,8 @@ public interface NotificationRepository extends JpaRepository<Notification,Long>
 
     @Query("SELECT COUNT(n) FROM Notification n WHERE n.user.id = :userId AND n.isRead = false")
     Long countByUserIdAndIsReadFalse(@Param("userId") Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @jakarta.transaction.Transactional
+    void deleteByUserId(Long userId);
 }

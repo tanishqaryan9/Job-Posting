@@ -55,6 +55,13 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/admin/{id}/password")
+    public ResponseEntity<Void> updateUserPasswordAsAdmin(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        userService.updateUserPasswordAsAdmin(id, body.get("password"));
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UserDto> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserById(id));

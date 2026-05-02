@@ -38,13 +38,19 @@ public class UserServiceImpl implements UserService {
     private final ModelMapper modelMapper;
     private final com.Job.Posting.job.repository.JobRepository jobRepository;
     private final com.Job.Posting.refresh.repository.RefreshTokenRepository refreshTokenRepository;
+    private final com.Job.Posting.notification.repository.NotificationRepository notificationRepository;
+    private final com.Job.Posting.otp.repository.OtpVerificationRepository otpVerificationRepository;
 
     @Override @Transactional
     public Page<UserDto> getAllUsers(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return userRepository.findAll(pageable).map(u -> {
             UserDto dto = modelMapper.map(u, UserDto.class);
-            appUserRepository.findByUserProfile(u).ifPresent(appUser -> dto.setRole(appUser.getRole()));
+            appUserRepository.findByUserProfile(u).ifPresent(appUser -> {
+                dto.setRole(appUser.getRole());
+                dto.setEmail(appUser.getUsername());
+                dto.setPassword(appUser.getPassword());
+            });
             return dto;
         });
     }
@@ -54,7 +60,11 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
         UserDto dto = modelMapper.map(user, UserDto.class);
-        appUserRepository.findByUserProfile(user).ifPresent(appUser -> dto.setRole(appUser.getRole()));
+        appUserRepository.findByUserProfile(user).ifPresent(appUser -> {
+            dto.setRole(appUser.getRole());
+            dto.setEmail(appUser.getUsername());
+            dto.setPassword(appUser.getPassword());
+        });
         return dto;
     }
 
@@ -93,6 +103,16 @@ public class UserServiceImpl implements UserService {
         deleteUserCascade(id);
     }
 
+    @Override @Transactional
+    public void updateUserPasswordAsAdmin(Long id, String newPassword) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        appUserRepository.findByUserProfile(user).ifPresent(appUser -> {
+            appUser.setPassword(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(newPassword));
+            appUserRepository.save(appUser);
+        });
+    }
+
     private void deleteUserCascade(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
@@ -100,12 +120,17 @@ public class UserServiceImpl implements UserService {
         userRepository.deleteUserSkillsByUserId(id);
         jobApplicationRepository.deleteByUserId(id);
         jobApplicationRepository.deleteByJobCreatorId(id);
+        jobRepository.deleteJobSkillsByJobCreatorId(id);
         jobRepository.deleteByCreatedById(id);
+        notificationRepository.deleteByUserId(id);
 
         appUserRepository.findByUserProfile(user).ifPresent(appUser -> {
             refreshTokenRepository.deleteAllByAppUser(appUser);
-            appUserRepository.delete(appUser);
+            otpVerificationRepository.deleteAllByAppUser(appUser);
+            appUserRepository.forceDeleteAppUser(appUser.getId());
         });
+        
+        userRepository.forceDeleteUser(user.getId());
     }
 
     @Override @Transactional

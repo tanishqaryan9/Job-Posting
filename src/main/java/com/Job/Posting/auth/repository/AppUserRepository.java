@@ -13,4 +13,8 @@ public interface AppUserRepository extends JpaRepository<AppUser,Long> {
     AppUser findByProviderIdAndProviderType(String providerId, AuthProviderType providerType);
 
     Optional<AppUser> findByUserProfile(User userProfile);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query(value = "DELETE FROM app_user WHERE id = :id", nativeQuery = true)
+    void forceDeleteAppUser(@org.springframework.data.repository.query.Param("id") Long id);
 }
